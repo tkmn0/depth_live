@@ -2,12 +2,8 @@ const WebRTC = require('./webrtc-client');
 
 let ws, webrtc;
 let localVideoElement;
-
-const State = {
-    None: 'none',
-    WebSocketConnected: 'ws_connected',
-    WebRTCConnected: 'webrtc_connected'
-}
+let colorCanvas, webpCanvas;
+let colorImage = new Image();
 
 const VieoSourceType = {
     Camera: 'camera',
@@ -16,18 +12,24 @@ const VieoSourceType = {
 }
 
 window.onload = function () {
-    console.log('video source type:', global.videoSourceType);
+    console.log('video source type:', window.videoSourceType);
 
     main();
-    global.webrtc = webrtc;
-    global.connectAsync = connectAsync;
-    global.setupWS = setupWS;
-    global.websocket = ws;
-    global.disconnectWebRTC = DissConnect;
-    global.userID = -1;
-    global.setSelectedVideoToLocalStream = setSelectedVideoToLocalStream;
-
-    ChangeSateTo(State.None);
+    window.webrtc = webrtc;
+    window.connectAsync = connectAsync;
+    window.setupWS = setupWS;
+    window.websocket = ws;
+    window.disconnectWebRTC = DissConnect;
+    window.userID = -1;
+    window.setSelectedVideoToLocalStream = setSelectedVideoToLocalStream;
+    colorCanvas = document.getElementById('colorCanvas');
+    webpCanvas = document.getElementById('webpCanvas');
+    setInterval(drawColorCanvas, 1000/30);
+    // document.body.appendChild(colorImage);
+    // colorImage.style.visibility = 'hidden';
+    setInterval(drawImage, 1000/30);
+    webpCanvas.width = 480;
+    webpCanvas.height = 360;
 }
 
 async function main() {
@@ -38,23 +40,38 @@ async function main() {
     webrtc.OnRemoveStreamCallback = OnRemoveStram;
     webrtc.OnICEConnectionStateChanged = OnICEConnectionStateChanged;
 
-    switch (global.videoSourceType) {
+    switch (window.videoSourceType) {
         case VieoSourceType.Camera:
             SetVideoTag();
             await webrtc.startVideo(localVideoElement);
             break;
         case VieoSourceType.File:
             SetVideoTag();
-            await webrtc.startVideoCapture(localVideoElement, global.videoFilePath);
+            await webrtc.startVideoCapture(localVideoElement, window.videoFilePath);
             break;
         case VieoSourceType.SelectCamera:
             break;
     }
 }
 
+const drawColorCanvas = () => {
+    colorCanvas.width = localVideoElement.videoWidth;
+    colorCanvas.height = localVideoElement.videoHeight;
+
+    colorCanvas.getContext("2d").drawImage(localVideoElement,0 ,0, localVideoElement.videoWidth, localVideoElement.videoHeight);
+
+    colorCanvas.toBlob((blob) => {
+        let url = window.URL.createObjectURL(blob);
+        colorImage.src = url;
+    }, "image/webp", 1)
+};
+
+const drawImage = () => {
+    webpCanvas.getContext("2d").drawImage(colorImage, 0, 0);
+};
+
 const sendSDP = function (sessionDescription) {
-    // const message = JSON.stringify(sessionDescription);
-    const message = JSON.stringify({ type: sessionDescription.type, sdp: sessionDescription.sdp, roomID: global.roomID, userID: global.userID, userName: global.userName });
+    const message = JSON.stringify(sessionDescription);
     ws.send(message);
 }
 
@@ -87,14 +104,8 @@ const OnICEConnectionStateChanged = (state) => {
     console.log('ice connection state: ', state);
     switch (state) {
         case 'completed':
-            ChangeSateTo(State.WebRTCConnected);
             break;
         case 'closed':
-            if (ws.readyState == 1) {
-                ChangeSateTo(State.WebSocketConnected);
-            } else {
-                ChangeSateTo(State.None);
-            }
             for (let video of document.getElementsByTagName('video')) {
                 if (video.id != 'local') {
                     video.remove();
@@ -117,6 +128,7 @@ function SetVideoTag() {
     localVideoElement.autoplay = true;
     document.body.appendChild(localVideoElement);
     localVideoElement.volume = 0;
+    localVideoElement.style.visibility = 'hidden';
 }
 
 function DissConnect() {
@@ -129,7 +141,6 @@ function setupWS(url) {
 
     ws.onopen = function () {
         console.log('on open');
-        ChangeSateTo(State.WebSocketConnected);
     };
 
     ws.onmessage = async function (evt) {
@@ -176,29 +187,4 @@ function setupWS(url) {
 function setSelectedVideoToLocalStream(stream) {
     console.log("setSelectedVideoToLocalStream");
     webrtc.setSelectedVideoToLocalStream(stream);
-}
-
-const ChangeSateTo = (state) => {
-    const wsurl = document.getElementById('wsurl');
-    const wsConnectButton = document.getElementById('wsConnectButton');
-    const webRTCConnectButton = document.getElementById('webrtcConnectButton');
-    const webRTCDisconnectButton = document.getElementById('webrtcDisconnectButton');
-
-    if (state == State.None) {
-        wsurl.style.display = 'block';
-        wsConnectButton.style.display = 'block';
-        webRTCConnectButton.style.display = 'none';
-        webRTCDisconnectButton.style.display = 'none';
-    } else if (state == State.WebSocketConnected) {
-        wsurl.style.display = 'none';
-        wsConnectButton.style.display = 'none';
-        webRTCConnectButton.style.display = 'block';
-        webRTCDisconnectButton.style.display = 'none';
-    } else if (state == State.WebRTCConnected) {
-        wsurl.style.display = 'none';
-        wsConnectButton.style.display = 'none';
-        webRTCConnectButton.style.display = 'none';
-        webRTCDisconnectButton.style.display = 'block';
-    }
-
 }

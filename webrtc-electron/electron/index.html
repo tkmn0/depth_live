@@ -35,10 +35,13 @@ limitations under the License.
         </button>
 
     </div>
-    <div style="background: gray; height: 10px; width: 100%"></div>
+    <div style="background: gray; height: 10px; width: 100%">
+        <canvas id="colorCanvas"></canvas>
+        <canvas id="webpCanvas"></canvas>
+    </div>
 </body>
 <script>
-    global.videoSourceType = 'camera';
+    window.videoSourceType = 'camera';
 
     async function connectButtonClicked() {
         console.log('connectbutton clicked');
