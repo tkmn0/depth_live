@@ -4,6 +4,15 @@ let ws, webrtc;
 let localVideoElement;
 let colorCanvas, webpCanvas;
 let colorImage = new Image();
+let isOpen = false;
+let currentBlob;
+let fileReader = new FileReader();
+fileReader.onload = () => {
+    var ary_u8 = new Uint8Array(fileReader.result);
+
+    // 出力テスト
+    console.log(ary_u8.length);
+};
 
 const VieoSourceType = {
     Camera: 'camera',
@@ -24,13 +33,20 @@ window.onload = function () {
     window.setSelectedVideoToLocalStream = setSelectedVideoToLocalStream;
     colorCanvas = document.getElementById('colorCanvas');
     webpCanvas = document.getElementById('webpCanvas');
-    setInterval(drawColorCanvas, 1000/30);
-    // document.body.appendChild(colorImage);
-    // colorImage.style.visibility = 'hidden';
-    setInterval(drawImage, 1000/30);
+    setInterval(drawColorCanvas, 1000 / 30);
+    // setInterval(drawImage, 1000 / 30);
     webpCanvas.width = 480;
     webpCanvas.height = 360;
+    setInterval(readBlob, 1000 / 30);
 }
+
+const readBlob = () => {
+    if (currentBlob) {
+        if (fileReader.readyState != FileReader.LOADING) {
+            fileReader.readAsArrayBuffer(currentBlob);
+        }
+    }
+};
 
 async function main() {
     webrtc = new WebRTC();
@@ -39,6 +55,8 @@ async function main() {
     webrtc.OnAddRemoteStreamCallback = OnAddRemoteStream;
     webrtc.OnRemoveStreamCallback = OnRemoveStram;
     webrtc.OnICEConnectionStateChanged = OnICEConnectionStateChanged;
+    webrtc.OnDataChannelOpen = dataChannelOnOpen;
+    webrtc.OnDataChannelMessage = onMessage;
 
     switch (window.videoSourceType) {
         case VieoSourceType.Camera:
@@ -54,21 +72,39 @@ async function main() {
     }
 }
 
+const dataChannelOnOpen = () => {
+    console.log("==== Data Channel On Open ==== ");
+    isOpen = true;
+};
+
 const drawColorCanvas = () => {
     colorCanvas.width = localVideoElement.videoWidth;
     colorCanvas.height = localVideoElement.videoHeight;
 
-    colorCanvas.getContext("2d").drawImage(localVideoElement,0 ,0, localVideoElement.videoWidth, localVideoElement.videoHeight);
+    colorCanvas.getContext("2d").drawImage(localVideoElement, 0, 0, localVideoElement.videoWidth, localVideoElement.videoHeight);
+
 
     colorCanvas.toBlob((blob) => {
-        let url = window.URL.createObjectURL(blob);
-        colorImage.src = url;
-    }, "image/webp", 1)
+        if (blob) {
+            // let url = window.URL.createObjectURL(blob);
+            // colorImage.src = url;
+            // if (isOpen) {
+            //     webrtc.sendData(blob);
+            // }
+            currentBlob = blob
+        }
+    }, "image/webp", 1);
+
+
 };
 
-const drawImage = () => {
-    webpCanvas.getContext("2d").drawImage(colorImage, 0, 0);
+const onMessage = (message) => {
+    console.log(message);
 };
+
+// const drawImage = () => {
+//     webpCanvas.getContext("2d").drawImage(colorImage, 0, 0);
+// };
 
 const sendSDP = function (sessionDescription) {
     const message = JSON.stringify(sessionDescription);
@@ -76,8 +112,11 @@ const sendSDP = function (sessionDescription) {
 }
 
 const sendICECandidate = function (candidate) {
-    console.log(candidate);
-    console.log('will not use candidate');
+    const message = {
+        type: "candidate",
+        ice: candidate
+    }
+    ws.send(JSON.stringify(message));
 }
 
 const OnAddRemoteStream = function (stream, id) {
@@ -144,9 +183,8 @@ function setupWS(url) {
     };
 
     ws.onmessage = async function (evt) {
-        console.log('ws onmessage() data:', evt.data);
         const message = JSON.parse(evt.data);
-        // console.log('recieved message: ' + message.type);
+        console.log('recieved message: ' + message.type);
         switch (message.type) {
             case 'offer': {
                 console.log('Received offer ...');

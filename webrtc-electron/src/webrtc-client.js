@@ -24,8 +24,9 @@ class WebRTC {
     async makeOfferAsync() {
         console.log('---- make offer async called ----');
         this._peerConnection = this.prepareNewConnection(true);
-        //this._dataChannel = this.setUpDataChannel(this._peerConnection);
+        this._dataChannel = this.setUpDataChannel(this._peerConnection);
 
+        window.datachannel = this._dataChannel;
         const offerSDP = await this._peerConnection.createOffer();
         console.log('--- makeofferAsync: success to create SDP');
         await this._peerConnection.setLocalDescription(offerSDP);
@@ -103,7 +104,6 @@ class WebRTC {
         const peer = new RTCPeerConnection(servers);
 
         peer.onicecandidate = function (evt) {
-            console.log('==== On ICECandidate ====');
             if (evt.candidate) {
                 self.sendICECandidate(evt.candidate);
             } else {
@@ -141,7 +141,7 @@ class WebRTC {
             console.log('Data channel is created!');
             ev.channel.onopen = function () {
                 console.log('Data channel is open and ready to be used.');
-                self._dataChannel.send('hey');
+
                 if (self.OnDataChannelOpen != null) {
                     self.OnDataChannelOpen();
                 }
@@ -183,7 +183,7 @@ class WebRTC {
         // ローカルのMediaStreamを利用できるようにする
         if (self._localStream) {
             console.log('Adding local stream...');
-            peer.addStream(this._localStream);
+            // peer.addStream(this._localStream);
         } else {
             // with data channnel
             console.warn('no local stream, but continue.');
@@ -209,12 +209,15 @@ class WebRTC {
         };
 
         datachannel.onmessage = function (event) {
-            console.log("Got Data Channel Message:", event.data);
+            // console.log("Got Data Channel Message:", event.data);
+            if (self.OnDataChannelMessage != null) {
+                self.OnDataChannelMessage(event);
+            }
         };
 
         datachannel.onopen = function () {
             console.log('--- data channel on open ---');
-            // datachannel.send('data channel on open');
+
             if (self.OnDataChannelOpen != null) {
                 self.OnDataChannelOpen();
             }
@@ -288,7 +291,6 @@ class WebRTC {
     }
 
     addIceCandidate(candidate) {
-        console.log('==== recieve ICE Candidate ====');
         if (this._peerConnection) {
             this._peerConnection.addIceCandidate(candidate);
         } else {
