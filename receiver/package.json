@@ -1,0 +1,22 @@
+{
+  "name": "webrtc_electron",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "npx webpack && npx electron ./electron",
+    "clean": "rm -rf ./dist/*"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "superagent": "^4.0.0"
+  },
+  "devDependencies": {
+    "electron": "^4.0.4",
+    "watch": "^1.0.2",
+    "webpack": "^4.29.0",
+    "webpack-cli": "^3.2.1"
+  }
+}

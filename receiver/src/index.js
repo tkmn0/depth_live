@@ -8,27 +8,11 @@ let isOpen = false;
 let currentBlob;
 let fileReader = new FileReader();
 
-const chunk = (array, num) => {
-    const chunked = [];
-    for(let elm of array){
-        let last = chunked[chunked.length-1];
-        if(!last || last.length === num){
-            chunked.push([elm]);
-        }else{
-            last.push(elm);
-        }
-    }
-    return chunked;
-};
-
 fileReader.onload = () => {
     var ary_u8 = new Uint8Array(fileReader.result);
-    let chunked = chunk(ary_u8, 1000);
-    if(isOpen){
-        for(let chunk of chunked){ 
-            webrtc.sendData(chunk);
-        }
-    }
+
+    // 出力テスト
+    console.log(ary_u8.length);
 };
 
 const VieoSourceType = {
@@ -50,11 +34,11 @@ window.onload = function () {
     window.setSelectedVideoToLocalStream = setSelectedVideoToLocalStream;
     colorCanvas = document.getElementById('colorCanvas');
     webpCanvas = document.getElementById('webpCanvas');
-    setInterval(drawColorCanvas, 1000 / 30);
+    // setInterval(drawColorCanvas, 1000 / 30);s
     // setInterval(drawImage, 1000 / 30);
     webpCanvas.width = 480;
     webpCanvas.height = 360;
-    setInterval(readBlob, 1000 / 10);
+    // setInterval(readBlob, 1000 / 30);s
 }
 
 const readBlob = () => {
@@ -90,6 +74,7 @@ async function main() {
 }
 
 const dataChannelOnOpen = () => {
+    console.log("==== Data Channel On Open ==== ");
     isOpen = true;
 };
 
@@ -102,6 +87,11 @@ const drawColorCanvas = () => {
 
     colorCanvas.toBlob((blob) => {
         if (blob) {
+            // let url = window.URL.createObjectURL(blob);
+            // colorImage.src = url;
+            // if (isOpen) {
+            //     webrtc.sendData(blob);
+            // }
             currentBlob = blob
         }
     }, "image/webp", 1);
