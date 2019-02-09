@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <script src="../dist/main.js"></script>
+</head>
+
+<body style="background: gray; color: #888888">
+    <div class='conrols' style="background: white; height: 100px; width: 100%;">
+        <input id="wsurl" type="text" value="ws://localhost:8080" size="30">
+        <button id="wsConnectButton">
+            ConnectWebsocket
+        </button>
+        <button id="webrtcConnectButton" onclick="connectButtonClicked()">
+            connect
+        </button>
+        <button id="webrtcDisconnectButton" onclick="disconnectButtonClicked()">
+            disconnect
+        </button>
+
+    </div>
+    <div style="background: gray; height: 10px; width: 100%">
+        <canvas id="colorCanvas"></canvas>
+        <canvas id="webpCanvas"></canvas>
+    </div>
+</body>
+
+</html>

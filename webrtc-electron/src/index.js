@@ -6,6 +6,7 @@ let colorCanvas, webpCanvas;
 let colorImage = new Image();
 let isOpen = false;
 let currentBlob;
+let isReading = false;
 /*
 let fileReader = new FileReader();
 
@@ -66,31 +67,34 @@ window.onload = function () {
 }
 
 const readBlob = () => {
-    if (currentBlob && isOpen) {
+    if (currentBlob /*&& isOpen*/ && !isReading) {
+        if (currentBlob.size === 0) { return; }
         let offset = 0;
         const chunkSize = 16384;
         const fileReader = new FileReader();
         fileReader.addEventListener('error', error => console.error('Error reading file:', error));
         fileReader.addEventListener('abort', event => console.log('File reading aborted:', event));
         fileReader.addEventListener('load', e => {
+            /*
             let result = webrtc.sendData(e.target.result);
             if (!result) {
                 console.log('failed to send');
             }
+            */
             offset += e.target.result.byteLength;
             if (offset < currentBlob.size) {
                 readSlice(offset);
+            } else {
+                isReading = false;
             }
         });
-        const readSlice = o => {
+        const readSlice = (o) => {
             // console.log('readSlice ', o);
             const slice = currentBlob.slice(offset, o + chunkSize);
             fileReader.readAsArrayBuffer(slice);
         };
         readSlice(0);
-        // if (fileReader.readyState != FileReader.LOADING) {
-        //     fileReader.readAsArrayBuffer(currentBlob);
-        // }
+        isReading = true;
     }
 };
 
