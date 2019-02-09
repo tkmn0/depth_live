@@ -1,9 +1,9 @@
 import { SignalingMessage } from "../models/json/signaling_message"
-import { WebSocketClientDelegate } from "./websocket_client_delegate";
+import { ISignalingGateway } from "../signaling/signaling_gateway";
 
-export class WebSocketClient {
+export class WebSocketClient implements ISignalingGateway {
     private socket: WebSocket = null
-    delegate: WebSocketClientDelegate
+    onSignalingMessage: (messsage: SignalingMessage) => void
 
     constructor() {
         setInterval(this.tryToConnect, 1000);
@@ -23,8 +23,8 @@ export class WebSocketClient {
 
         socket.onmessage = (event) => {
             const message: SignalingMessage = JSON.parse(event.data);
-            if (this.delegate && this.delegate.onSignalingMessage) {
-                this.delegate.onSignalingMessage(message);
+            if (this.onSignalingMessage) {
+                this.onSignalingMessage(message);
             }
         };
 
@@ -38,9 +38,9 @@ export class WebSocketClient {
         return socket;
     };
 
-    public sendMessage = (message: string) => {
+    sendMessage = (message: SignalingMessage) => {
         if (this.socket) {
-            this.socket.send(message);
+            this.socket.send(JSON.stringify(message));
         }
     };
 }

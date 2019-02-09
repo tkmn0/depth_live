@@ -2,10 +2,11 @@ import { WebSocketClient } from "./websocket_client/websocket_client";
 import { WebRTCClient } from "./webrtc_client/webrtc_client";
 import { WebRTCUtil } from "./util/util";
 import { Signling } from "./signaling/signaling";
+import { ISignalingGateway } from "./signaling/signaling_gateway";
 
 class Main {
 
-    webSocketClient: WebSocketClient
+    webSocketClient: ISignalingGateway
     webRTCClient: WebRTCClient
     signling: Signling
 
@@ -19,7 +20,7 @@ class Main {
         });
         this.signling = new Signling(this.webSocketClient, this.webRTCClient);
         this.webRTCClient.signalingDelegate = this.signling;
-        this.webSocketClient.delegate = this.signling;
+        this.webSocketClient.onSignalingMessage = this.signling.onSignalingMessage;
     }
 
     private setupEvents = () => {
@@ -30,7 +31,7 @@ class Main {
     private connect = async () => {
         const offer = await this.webRTCClient.connect();
         const message = WebRTCUtil.ConvertSdpToMessage(offer);
-        this.webSocketClient.sendMessage(JSON.stringify(message));
+        this.webSocketClient.sendMessage(message);
     };
 
     private disconnect = async () => { }

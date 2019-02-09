@@ -1,5 +1,6 @@
 import { SignalingMessage } from "../models/json/signaling_message";
 
-export interface WebSocketClientDelegate {
+export interface ISignalingGateway {
+    sendMessage(message: SignalingMessage): void
     onSignalingMessage: (messsage: SignalingMessage) => void
 }
