@@ -1,5 +1,6 @@
 import { WebRTCClientDelegate } from "./webrtc_client_delegate";
-import { Channels } from "./channels";
+import { Channels } from "../models/channels";
+import { checkServerIdentity } from "tls";
 
 export class WebRTCClient {
 
@@ -23,7 +24,12 @@ export class WebRTCClient {
         ch.onclose = (event) => { };
         ch.onerror = (event) => { };
         ch.onmessage = (event) => {
-
+            if (this.delegate && this.delegate.onMessageFrom) {
+                this.delegate.onMessageFrom(ch, event);
+            }
+        };
+        ch.onopen = (event) => {
+            console.log('data channel on open');
         };
         return ch;
     };
@@ -44,26 +50,38 @@ export class WebRTCClient {
             }
         };
         peer.oniceconnectionstatechange = (event) => { };
-        peer.ondatachannel = (event) => { };
+        peer.ondatachannel = (event) => {
+            this.dataChannel = event.channel;
+            event.channel.onclose = (event) => { };
+            event.channel.onopen = (event) => {
+                console.log('data channel on open');
+            };
+            event.channel.onclose = (event) => { };
+            event.channel.onmessage = (messageEvent) => {
+                if (this.delegate && this.delegate.onMessageFrom) {
+                    this.delegate.onMessageFrom(event.channel, messageEvent);
+                }
+            };
+        };
         peer.onnegotiationneeded = () => { };
         peer.ontrack = (event) => { };
 
         return peer;
     }
 
-    public makeOfferAsync = async (): Promise<RTCSessionDescriptionInit> => {
+    private makeOfferAsync = async (): Promise<RTCSessionDescription> => {
         return new Promise(async (resolve, reject) => {
             try {
                 const offer = await this.peerConnection.createOffer();
                 await this.peerConnection.setLocalDescription(offer);
-                resolve(offer);
+                resolve(new RTCSessionDescription(offer));
             } catch (err) {
                 reject(err);
             }
         });
     };
 
-    public makeAnswerAsync = async (): Promise<RTCSessionDescriptionInit> => {
+    private makeAnswerAsync = async (): Promise<RTCSessionDescriptionInit> => {
         return new Promise(async (resolve, reject) => {
             if (!this.peerConnection) {
                 reject('no peer connection');
@@ -79,6 +97,10 @@ export class WebRTCClient {
 
         });
     };
+
+    public connect = () => {
+        return this.makeOfferAsync();
+    }
 
     public setOfferAsync = async (sdp: RTCSessionDescription, callback: (answer: RTCSessionDescription) => void) => {
         try {

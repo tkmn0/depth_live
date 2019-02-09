@@ -1,5 +1,5 @@
 export interface SignalingMessage {
-    type: string,
-    sdp: string,
+    type: string
+    sdp: string
     ice: RTCIceCandidate
 };

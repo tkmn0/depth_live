@@ -1,4 +1,4 @@
-import { SignalingMessage } from "./signaling_message"
+import { SignalingMessage } from "../models/json/signaling_message"
 import { WebSocketClientDelegate } from "./websocket_client_delegate";
 
 export class WebSocketClient {
@@ -23,8 +23,8 @@ export class WebSocketClient {
 
         socket.onmessage = (event) => {
             const message: SignalingMessage = JSON.parse(event.data);
-            if (this.delegate && this.delegate.onMessage) {
-                this.delegate.onMessage(message);
+            if (this.delegate && this.delegate.onSignalingMessage) {
+                this.delegate.onSignalingMessage(message);
             }
         };
 
