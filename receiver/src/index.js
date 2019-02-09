@@ -100,7 +100,8 @@ const drawColorCanvas = () => {
 };
 
 const onMessage = (message) => {
-    console.log(message);
+    // console.log(message);
+    console.log("msg");
 };
 
 // const drawImage = () => {

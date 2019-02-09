@@ -10,6 +10,7 @@ class WebRTC {
         this.OnAddRemoteStreamCallback = null;
         this.OnRemoveStreamCallback = null;
         this.OnDataChannelOpen = null;
+        this.OnDataChannelClose = null;
         this.OnDataChannelMessage = null;
         this.OnICEConnectionStateChanged = null;
         this._connectionCount = 0;
@@ -44,9 +45,16 @@ class WebRTC {
     }
 
     sendData(bytes) {
+        let result = false;
         if (this._dataChannel != null) {
-            this._dataChannel.send(bytes);
+            try {
+                this._dataChannel.send(bytes);
+                result = true;
+            } catch (error) {
+                result = false;
+            }
         }
+        return result;
     }
 
     // getUserMediaでカメラ、マイクにアクセス
@@ -102,7 +110,8 @@ class WebRTC {
             ]
         };
         const peer = new RTCPeerConnection(servers);
-
+        console.log('max ch:', peer);
+        // console.log('max message size:', peer.sctp.maxMessageSize);
         peer.onicecandidate = function (evt) {
             if (evt.candidate) {
                 self.sendICECandidate(evt.candidate);
@@ -120,15 +129,20 @@ class WebRTC {
 
             switch (peer.iceConnectionState) {
                 case 'closed':
+                    console.warn('closed');
+                    break;
                 case 'connected':
                     console.log('peerconnection connection established!!');
+                    break;
                 case 'failed':
+                    console.warn('ice state failed');
                     // ICEのステートが切断状態または異常状態になったら切断処理を実行する
                     if (this._peerConnection) {
                         this.hangUp();
                     }
                     break;
                 case 'dissconnected':
+                    console.warn('ice disconnected');
                     break;
             }
 
@@ -225,6 +239,9 @@ class WebRTC {
 
         datachannel.onclose = function () {
             console.log("The Data Channel is Closed");
+            if (self.OnDataChannelClose != null) {
+                self.OnDataChannelClose();
+            }
         };
 
         console.log('created data channel');
@@ -258,13 +275,14 @@ class WebRTC {
             this._peerConnection = this.prepareNewConnection(false);
         }
 
-        console.log('message from sfu');
         try {
 
             if (this._peerConnection.signalingState == 'have-remote-offer') {
                 console.log('peer connection in progress');
                 return;
             }
+
+            this.customSdp(sessionDescription);
             await this._peerConnection.setRemoteDescription(sessionDescription);
             console.log('set remote offer async success...');
             await this.makeAnswerAsync();
@@ -275,6 +293,10 @@ class WebRTC {
             console.log(error);
         }
     }
+
+    customSdp(sessionDescription) {
+        console.log(sessionDescription.sdp);
+    };
 
     async setAnswerAsync(sessionDescription) {
         if (!this._peerConnection) {

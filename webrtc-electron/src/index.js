@@ -6,15 +6,16 @@ let colorCanvas, webpCanvas;
 let colorImage = new Image();
 let isOpen = false;
 let currentBlob;
+/*
 let fileReader = new FileReader();
 
 const chunk = (array, num) => {
     const chunked = [];
-    for(let elm of array){
-        let last = chunked[chunked.length-1];
-        if(!last || last.length === num){
+    for (let elm of array) {
+        let last = chunked[chunked.length - 1];
+        if (!last || last.length === num) {
             chunked.push([elm]);
-        }else{
+        } else {
             last.push(elm);
         }
     }
@@ -23,13 +24,20 @@ const chunk = (array, num) => {
 
 fileReader.onload = () => {
     var ary_u8 = new Uint8Array(fileReader.result);
-    let chunked = chunk(ary_u8, 1000);
-    if(isOpen){
-        for(let chunk of chunked){ 
-            webrtc.sendData(chunk);
+    let chunked = chunk(ary_u8, 1024 * 16);
+    if (isOpen) {
+        for (let chunk of chunked) {
+            // console.log(chunk.length);
+            let result = webrtc.sendData(chunk);
+            if (!result) {
+                console.log('failed to send');
+            }
         }
+    } else {
+        console.log('data channel is closed');
     }
 };
+*/
 
 const VieoSourceType = {
     Camera: 'camera',
@@ -58,10 +66,31 @@ window.onload = function () {
 }
 
 const readBlob = () => {
-    if (currentBlob) {
-        if (fileReader.readyState != FileReader.LOADING) {
-            fileReader.readAsArrayBuffer(currentBlob);
-        }
+    if (currentBlob && isOpen) {
+        let offset = 0;
+        const chunkSize = 16384;
+        const fileReader = new FileReader();
+        fileReader.addEventListener('error', error => console.error('Error reading file:', error));
+        fileReader.addEventListener('abort', event => console.log('File reading aborted:', event));
+        fileReader.addEventListener('load', e => {
+            let result = webrtc.sendData(e.target.result);
+            if (!result) {
+                console.log('failed to send');
+            }
+            offset += e.target.result.byteLength;
+            if (offset < currentBlob.size) {
+                readSlice(offset);
+            }
+        });
+        const readSlice = o => {
+            // console.log('readSlice ', o);
+            const slice = currentBlob.slice(offset, o + chunkSize);
+            fileReader.readAsArrayBuffer(slice);
+        };
+        readSlice(0);
+        // if (fileReader.readyState != FileReader.LOADING) {
+        //     fileReader.readAsArrayBuffer(currentBlob);
+        // }
     }
 };
 
@@ -92,6 +121,10 @@ async function main() {
 const dataChannelOnOpen = () => {
     isOpen = true;
 };
+
+const dataChannelOnClose = () => {
+    isOpen = false;
+}
 
 const drawColorCanvas = () => {
     colorCanvas.width = localVideoElement.videoWidth;
