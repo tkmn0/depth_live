@@ -1,14 +1,15 @@
 import { WebSocketClientDelegate } from "../websocket_client/websocket_client_delegate";
-import { WebRTCClientDelegate } from "../webrtc_client/webrtc_client_delegate";
 import { SignalingMessage } from "../models/json/signaling_message";
 import { WebSocketClient } from "../websocket_client/websocket_client";
 import { WebRTCClient } from "../webrtc_client/webrtc_client";
 import { WebRTCUtil } from "../util/util"
+import { WebRTCSignalingDelegate } from "../webrtc_client/webrtc_signaling_delegate";
 
-export class Signling implements WebSocketClientDelegate, WebRTCClientDelegate {
+export class Signling implements WebSocketClientDelegate, WebRTCSignalingDelegate {
 
     private gateway: WebSocketClient
     private target: WebRTCClient
+
     constructor(socket: WebSocketClient, rtc: WebRTCClient) {
         this.gateway = socket;
         this.target = rtc;
@@ -16,6 +17,7 @@ export class Signling implements WebSocketClientDelegate, WebRTCClientDelegate {
 
     // WebSocketClientDelegate
     onSignalingMessage = async (message: SignalingMessage) => {
+        console.log("signaling recieved:", message);
         switch (message.type) {
             case 'offer': {
                 const offerSdp = WebRTCUtil.ConvertMessageToSdp(message);
@@ -41,12 +43,8 @@ export class Signling implements WebSocketClientDelegate, WebRTCClientDelegate {
     };
 
     // WebRTCClientDelegate
-    didGenerateCandidte = (candidate: RTCIceCandidate) => {
+    didGenerateCandidate = (candidate: RTCIceCandidate) => {
         const message = WebRTCUtil.ConvertCandidateToMessage(candidate);
         this.gateway.sendMessage(JSON.stringify(message));
     };
-
-    onMessageFrom = (ch: RTCDataChannel, event: MessageEvent) => {
-
-    }
 }

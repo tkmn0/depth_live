@@ -18,7 +18,7 @@ class Main {
             data: true
         });
         this.signling = new Signling(this.webSocketClient, this.webRTCClient);
-        this.webRTCClient.delegate = this.signling;
+        this.webRTCClient.signalingDelegate = this.signling;
         this.webSocketClient.delegate = this.signling;
     }
 

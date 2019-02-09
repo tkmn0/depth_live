@@ -1,13 +1,15 @@
 import { WebRTCClientDelegate } from "./webrtc_client_delegate";
 import { Channels } from "../models/channels";
 import { checkServerIdentity } from "tls";
+import { WebRTCSignalingDelegate } from "./webrtc_signaling_delegate";
 
 export class WebRTCClient {
 
     private peerConnection: RTCPeerConnection;
     private dataChannel: RTCDataChannel;
 
-    delegate: WebRTCClientDelegate
+    delegate: WebRTCClientDelegate;
+    signalingDelegate: WebRTCSignalingDelegate;
 
     constructor(channels: Channels) {
         this.peerConnection = this.prepareNewConnection();
@@ -45,8 +47,8 @@ export class WebRTCClient {
 
         const peer = new RTCPeerConnection(rtcConf);
         peer.onicecandidate = (event) => {
-            if (this.delegate && this.delegate.didGenerateCandidte) {
-                this.delegate.didGenerateCandidte(event.candidate);
+            if (this.signalingDelegate && this.signalingDelegate) {
+                this.signalingDelegate.didGenerateCandidate(event.candidate);
             }
         };
         peer.oniceconnectionstatechange = (event) => { };
