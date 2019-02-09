@@ -6,21 +6,21 @@ import { ISignalingGateway } from "./signaling/signaling_gateway";
 
 class Main {
 
-    webSocketClient: ISignalingGateway
+    signalingGateway: ISignalingGateway
     webRTCClient: WebRTCClient
     signling: Signling
 
     constructor() {
         this.setupEvents();
-        this.webSocketClient = new WebSocketClient();
+        this.signalingGateway = new WebSocketClient();
         this.webRTCClient = new WebRTCClient({
             video: false,
             audio: false,
             data: true
         });
-        this.signling = new Signling(this.webSocketClient, this.webRTCClient);
+        this.signling = new Signling(this.signalingGateway, this.webRTCClient);
         this.webRTCClient.signalingDelegate = this.signling;
-        this.webSocketClient.onSignalingMessage = this.signling.onSignalingMessage;
+        this.signalingGateway.onSignalingMessage = this.signling.onSignalingMessage;
     }
 
     private setupEvents = () => {
@@ -31,7 +31,7 @@ class Main {
     private connect = async () => {
         const offer = await this.webRTCClient.connect();
         const message = WebRTCUtil.ConvertSdpToMessage(offer);
-        this.webSocketClient.sendMessage(message);
+        this.signalingGateway.sendMessage(message);
     };
 
     private disconnect = async () => { }
