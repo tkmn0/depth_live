@@ -7,17 +7,14 @@ export class WebRTCClient {
 
     private peerConnection: RTCPeerConnection;
     private dataChannel: RTCDataChannel;
+    private channels: Channels
 
     delegate: WebRTCClientDelegate;
     signalingDelegate: WebRTCSignalingDelegate;
 
     constructor(channels: Channels) {
+        this.channels = channels;
         this.peerConnection = this.prepareNewConnection();
-
-        if (channels.data) {
-            // set up data
-            this.dataChannel = this.setupDataChannel(this.peerConnection);
-        }
     }
 
     private setupDataChannel = (peer: RTCPeerConnection): RTCDataChannel => {
@@ -101,6 +98,11 @@ export class WebRTCClient {
     };
 
     public connect = () => {
+        if (!this.dataChannel && this.channels.data) {
+            // set up data
+            this.dataChannel = this.setupDataChannel(this.peerConnection);
+        }
+
         return this.makeOfferAsync();
     }
 

@@ -17,7 +17,6 @@ export class Signling implements WebSocketClientDelegate, WebRTCSignalingDelegat
 
     // WebSocketClientDelegate
     onSignalingMessage = async (message: SignalingMessage) => {
-        console.log("signaling recieved:", message);
         switch (message.type) {
             case 'offer': {
                 const offerSdp = WebRTCUtil.ConvertMessageToSdp(message);
