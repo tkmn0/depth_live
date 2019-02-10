@@ -56,7 +56,10 @@ export class Streamer {
                     readSlice(offset);
                 } else {
                     // read done send
-                    console.log('read done');
+                    // console.log('read done');
+                    if (this.delegate && this.delegate.readDone) {
+                        this.delegate.readDone();
+                    }
                 }
             };
 

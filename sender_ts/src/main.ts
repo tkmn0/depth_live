@@ -4,8 +4,6 @@ import { WebRTCUtil } from "./util/util";
 import { Signling } from "./signaling/signaling";
 import { ISignalingGateway } from "./signaling/signaling_gateway";
 import { Streamer } from "./streamer/streamer";
-import { Stream } from "stream";
-import { Channels } from "./models/channels";
 import { StreamerDelegate } from "./streamer/streamer_delegate";
 
 class Main implements StreamerDelegate {
@@ -15,7 +13,9 @@ class Main implements StreamerDelegate {
     signling: Signling
     streamer: Streamer
     total: number
-    readed: number
+    chunks: ArrayBuffer[]
+    image: HTMLImageElement
+    testCanvas: HTMLCanvasElement
 
     constructor() {
         this.setupEvents();
@@ -32,6 +32,14 @@ class Main implements StreamerDelegate {
         this.streamer = new Streamer();
         this.streamer.startSession({ video: true, audio: false, data: false });
         this.streamer.delegate = this;
+
+        this.testCanvas = document.createElement('canvas');
+        document.body.appendChild(this.testCanvas);
+        this.testCanvas.width = 640;
+        this.testCanvas.height = 480;
+        this.image = document.createElement('img');
+
+        setInterval(() => { this.testCanvas.getContext('2d').drawImage(this.image, 0, 0); }, 1000 / 30);
     }
 
     private setupEvents = () => {
@@ -48,13 +56,28 @@ class Main implements StreamerDelegate {
     private disconnect = async () => { }
 
     readStart = (totalLength: number) => {
+        this.chunks = new Array();
         this.total = totalLength;
-        console.log('read start:', totalLength);
+    };
+
+    readDone = () => {
+        const blob = new Blob(this.chunks, { type: 'image/webp' });
+        this.image.src = URL.createObjectURL(blob);
+    };
+
+    concatChunks = (chunks: ArrayBuffer[], totalLength: number): ArrayBuffer => {
+        let result = new Uint8Array(totalLength);
+        let offset = 0;
+        chunks.forEach((chunk) => {
+            result.set(new Uint8Array(chunk), offset);
+            offset += chunk.byteLength;
+        });
+
+        return result.buffer;
     };
 
     readBytes = (chunk: ArrayBuffer) => {
-        this.readed += chunk.byteLength;
-        console.log(chunk.byteLength);
+        this.chunks.push(chunk);
     };
 }
 
