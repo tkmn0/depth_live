@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "webpack && electron electron",
+    "build": "npm run sender & npm run receiver",
     "sender": "webpack && electron electron sender",
     "receiver": "webpack && electron electron receiver"
   },

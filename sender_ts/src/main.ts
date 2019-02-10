@@ -55,6 +55,7 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
             this.streamReader = new StreamReader();
             this.streamReader.getCanvas().width = 640;
             this.streamReader.getCanvas().height = 480;
+            document.body.appendChild(this.streamReader.getCanvas());
         }
     }
 
@@ -72,23 +73,20 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
     private disconnect = async () => { }
 
     readStart = (totalLength: number) => {
-        // this.streamReader.readStart();
-        // this.webRTCClient.sendBuffer();
         this.webRTCClient.sendBuffer(this.streamMessage.start());
     };
 
     readDone = () => {
-        // this.streamReader.readDone();
         this.webRTCClient.sendBuffer(this.streamMessage.done());
     };
 
     readBytes = (chunk: ArrayBuffer) => {
-        // this.streamReader.readBytes(chunk);
-        // this.webRTCClient.sendBuffer(chunk);
+        this.webRTCClient.sendBuffer(chunk);
     };
 
     onMessageFrom = (ch: RTCDataChannel, message: MessageEvent) => {
-        console.log(message);
+        let buffer = message.data as ArrayBuffer
+        this.streamReader.read(buffer);
     };
 }
 

@@ -1,6 +1,5 @@
 import { WebRTCClientDelegate } from "./webrtc_client_delegate";
 import { Channels } from "../models/channels";
-import { checkServerIdentity } from "tls";
 import { WebRTCSignalingDelegate } from "./webrtc_signaling_delegate";
 
 export class WebRTCClient {

@@ -1,6 +1,5 @@
 import { Channels } from "../models/channels";
 import { setInterval } from "timers";
-import { deflateRaw } from "zlib";
 import { StreamerDelegate } from "./streamer_delegate";
 
 export class Streamer {
@@ -10,6 +9,7 @@ export class Streamer {
     private currentBlob: Blob
     private fileReader = new FileReader();
     delegate: StreamerDelegate
+    private isReading = false;
 
     constructor() {
         this.videoElement = document.createElement('video');
@@ -40,7 +40,7 @@ export class Streamer {
     };
 
     private readBlob = (blob: Blob) => {
-        if (blob && blob.size > 0 && this.fileReader.readyState != FileReader.LOADING) {
+        if (blob && blob.size > 0 && !this.isReading) {
             let offset = 0;
             const chunkSize = 16384;
 
@@ -55,10 +55,9 @@ export class Streamer {
                 if (offset < blob.size) {
                     readSlice(offset);
                 } else {
-                    // read done send
-                    // console.log('read done');
                     if (this.delegate && this.delegate.readDone) {
                         this.delegate.readDone();
+                        this.isReading = false;
                     }
                 }
             };
@@ -70,6 +69,7 @@ export class Streamer {
 
             if (this.delegate && this.delegate.readStart) {
                 this.delegate.readStart(blob.size);
+                this.isReading = true;
             }
             readSlice(0);
         }
