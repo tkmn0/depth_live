@@ -4,7 +4,9 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "webpack && electron electron"
+    "build": "webpack && electron electron",
+    "sender": "webpack && electron electron sender",
+    "receiver": "webpack && electron electron receiver"
   },
   "keywords": [],
   "author": "",

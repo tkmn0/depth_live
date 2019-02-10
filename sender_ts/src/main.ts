@@ -11,7 +11,7 @@ import { WebRTCClientDelegate } from "./webrtc_client/webrtc_client_delegate";
 
 class Main implements StreamerDelegate, WebRTCClientDelegate {
 
-    sender: boolean = false;
+    sender: boolean;
     signalingGateway: ISignalingGateway
     webRTCClient: WebRTCClient
     signling: Signling
@@ -20,6 +20,14 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
     streamMessage: StreamMessage
 
     constructor() {
+        let urlParams = new URLSearchParams(location.search);
+        let type = urlParams.get('type');
+        if (type == 'sender') {
+            this.sender = true;
+        } else {
+            this.sender = false;
+        }
+
         this.setupEvents();
 
         // webrtc
