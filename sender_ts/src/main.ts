@@ -5,17 +5,16 @@ import { Signling } from "./signaling/signaling";
 import { ISignalingGateway } from "./signaling/signaling_gateway";
 import { Streamer } from "./streamer/streamer";
 import { StreamerDelegate } from "./streamer/streamer_delegate";
+import { StreamReader } from "./stream_reader/stream_reader";
 
 class Main implements StreamerDelegate {
 
+    sender: boolean = true;
     signalingGateway: ISignalingGateway
     webRTCClient: WebRTCClient
     signling: Signling
     streamer: Streamer
-    total: number
-    chunks: ArrayBuffer[]
-    image: HTMLImageElement
-    testCanvas: HTMLCanvasElement
+    streamReader: StreamReader
 
     constructor() {
         this.setupEvents();
@@ -29,17 +28,21 @@ class Main implements StreamerDelegate {
         this.signling = new Signling(this.signalingGateway, this.webRTCClient);
         this.webRTCClient.signalingDelegate = this.signling;
         this.signalingGateway.onSignalingMessage = this.signling.onSignalingMessage;
-        this.streamer = new Streamer();
-        this.streamer.startSession({ video: true, audio: false, data: false });
-        this.streamer.delegate = this;
 
-        this.testCanvas = document.createElement('canvas');
-        document.body.appendChild(this.testCanvas);
-        this.testCanvas.width = 640;
-        this.testCanvas.height = 480;
-        this.image = document.createElement('img');
+        if (this.sender) {
+            this.streamer = new Streamer();
+            this.streamer.startSession({ video: true, audio: false, data: false });
+            this.streamer.delegate = this;
 
-        setInterval(() => { this.testCanvas.getContext('2d').drawImage(this.image, 0, 0); }, 1000 / 30);
+            this.streamReader = new StreamReader();
+            this.streamReader.getCanvas().width = 640;
+            this.streamReader.getCanvas().height = 480;
+            document.body.appendChild(this.streamReader.getCanvas());
+        } else {
+            // this.streamReader = new StreamReader();
+            // this.streamReader.getCanvas().width = 640;
+            // this.streamReader.getCanvas().height = 480;
+        }
     }
 
     private setupEvents = () => {
@@ -56,28 +59,15 @@ class Main implements StreamerDelegate {
     private disconnect = async () => { }
 
     readStart = (totalLength: number) => {
-        this.chunks = new Array();
-        this.total = totalLength;
+        this.streamReader.readStart();
     };
 
     readDone = () => {
-        const blob = new Blob(this.chunks, { type: 'image/webp' });
-        this.image.src = URL.createObjectURL(blob);
-    };
-
-    concatChunks = (chunks: ArrayBuffer[], totalLength: number): ArrayBuffer => {
-        let result = new Uint8Array(totalLength);
-        let offset = 0;
-        chunks.forEach((chunk) => {
-            result.set(new Uint8Array(chunk), offset);
-            offset += chunk.byteLength;
-        });
-
-        return result.buffer;
+        this.streamReader.readDone();
     };
 
     readBytes = (chunk: ArrayBuffer) => {
-        this.chunks.push(chunk);
+        this.streamReader.readBytes(chunk);
     };
 }
 
