@@ -29,7 +29,9 @@ export class StreamReader {
     };
 
     public readDone = () => {
-        const blob = new Blob(this.chunks, { type: 'image/webp' });
-        this.image.src = URL.createObjectURL(blob);
+        if (this.chunks && this.chunks.length > 0) {
+            const blob = new Blob(this.chunks, { type: 'image/webp' });
+            this.image.src = URL.createObjectURL(blob);
+        }
     };
 }

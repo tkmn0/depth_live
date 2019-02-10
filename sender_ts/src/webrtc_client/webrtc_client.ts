@@ -20,8 +20,8 @@ export class WebRTCClient {
     private setupDataChannel = (peer: RTCPeerConnection): RTCDataChannel => {
         const ch = peer.createDataChannel('data');
         ch.binaryType = 'arraybuffer';
-        ch.onclose = (event) => { };
-        ch.onerror = (event) => { };
+        ch.onclose = (event) => { this.dataChannel = null; };
+        ch.onerror = (event) => { this.dataChannel = null; };
         ch.onmessage = (event) => {
             if (this.delegate && this.delegate.onMessageFrom) {
                 this.delegate.onMessageFrom(ch, event);
@@ -44,18 +44,18 @@ export class WebRTCClient {
 
         const peer = new RTCPeerConnection(rtcConf);
         peer.onicecandidate = (event) => {
-            if (this.signalingDelegate && this.signalingDelegate) {
+            if (this.signalingDelegate && this.signalingDelegate && event != null) {
                 this.signalingDelegate.didGenerateCandidate(event.candidate);
             }
         };
         peer.oniceconnectionstatechange = (event) => { };
         peer.ondatachannel = (event) => {
             this.dataChannel = event.channel;
-            event.channel.onclose = (event) => { };
+            event.channel.onclose = (event) => { this.dataChannel = null; };
             event.channel.onopen = (event) => {
                 console.log('data channel on open');
             };
-            event.channel.onclose = (event) => { };
+            event.channel.onclose = (event) => { this.dataChannel = null; };
             event.channel.onmessage = (messageEvent) => {
                 if (this.delegate && this.delegate.onMessageFrom) {
                     this.delegate.onMessageFrom(event.channel, messageEvent);
@@ -135,8 +135,14 @@ export class WebRTCClient {
     };
 
     public addIceCandidate = (candidate: RTCIceCandidate) => {
-        if (this.peerConnection) {
+        if (this.peerConnection && candidate) {
             this.peerConnection.addIceCandidate(candidate);
+        }
+    };
+
+    public sendBuffer = (buffer: ArrayBuffer) => {
+        if (this.dataChannel && this.dataChannel.readyState == 'open') {
+            this.dataChannel.send(buffer);
         }
     };
 }
