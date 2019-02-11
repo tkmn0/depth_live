@@ -84,7 +84,7 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
         document.body.appendChild(depthCanvas);
 
         let GL = this._configureGLContext(depthCanvas);
-        let gl = GL.gl;
+        let gl: WebGL2RenderingContext = GL.gl;
 
         let canvas = document.createElement('canvas');
         canvas.width = depthCanvas.width;
@@ -93,25 +93,26 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
 
         let counter = 0;
 
-        setInterval(() => {
+        const render = setInterval(() => {
             if (videoFrameAvailable) {
+                let frameBuffer = GL.framebuffer;
+
                 gl.activeTexture(gl.TEXTURE0);
                 gl.bindTexture(gl.TEXTURE_2D, GL.depth_texture)
 
-                gl.texImage2D(gl.TEXTURE_2D, 0, GL.R32F, GL.RED, gl.FLOAT, dpethVideo);
-
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, gl.RED, gl.FLOAT, dpethVideo);
 
                 // ======= Read Pixels
-                let videowidth = dpethVideo.videoWidth;
-                let videoHeight = dpethVideo.videoHeight;
+                let videowidth = depthCanvas.width;
+                let videoHeight = depthCanvas.height;
                 // Bind the framebuffer the texture is color-attached to.
-                gl.bindFramebuffer(gl.FRAMEBUFFER, GL.framebuffer);
+                gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer);
                 if (!this.readBuffer) {
                     this.readBuffer = new Float32Array(videowidth * videoHeight);
                 }
-                gl.readPixels(0, 0, videowidth, videoHeight, GL.RED, gl.FLOAT, this.readBuffer);
-                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
+                gl.readPixels(0, 0, videowidth, videoHeight, gl.RED, gl.FLOAT, this.readBuffer, 0);
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
                 // Show gray colored depth
                 gl.bindBuffer(gl.ARRAY_BUFFER, GL.vertex_buffer);
@@ -127,8 +128,10 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
     // Creates WebGL/WebGL2 context used to upload depth video to texture,
     // read the pixels to Float buffer and optionElally render the texture.
     _configureGLContext(canvas: HTMLCanvasElement) {
-        let gl: WebGLRenderingContext = canvas.getContext("webgl2") as WebGLRenderingContext;
+        let gl: WebGL2RenderingContext = canvas.getContext("webgl2") as WebGL2RenderingContext;
 
+        gl.getExtension('EXT_color_buffer_float');
+        gl.getExtension('OES_texture_float_linear');
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         // Shaders and program are needed only if rendering depth texture.
@@ -181,7 +184,7 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
         let RGBA = 6408;
         let RED = 6403;
         let R32F = 33326;
-        return { gl, vertex_buffer, vertex_location, index_buffer, depth_texture, framebuffer, RGBA32F, RGBA, RED, R32F };
+        return { gl, vertex_buffer, vertex_location, index_buffer, depth_texture, framebuffer };
     }
 
 

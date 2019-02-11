@@ -18,5 +18,8 @@
     "typescript": "^3.3.3",
     "webpack": "^4.29.3",
     "webpack-cli": "^3.2.3"
+  },
+  "dependencies": {
+    "@types/webgl2": "0.0.4"
   }
 }
