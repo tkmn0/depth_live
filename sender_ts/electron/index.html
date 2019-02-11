@@ -21,6 +21,18 @@
         <canvas id="colorCanvas"></canvas>
         <canvas id="webpCanvas"></canvas>
     </div>
+    <script>
+        let canvas = document.createElement('canvas');
+        let gl = canvas.getContext('webgl2');
+        gl.getExtension("OES_texture_float");
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        console.log(gl);
+        console.log('RGBA32F:', gl.RGBA32F);
+        console.log('RGBA:', gl.RGBA);
+        console.log('RED:', gl.RED);
+        console.log('R32F:', gl.R32F);
+    </script>
 </body>
 
 </html>

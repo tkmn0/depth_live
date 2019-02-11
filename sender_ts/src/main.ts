@@ -8,6 +8,8 @@ import { StreamerDelegate } from "./streamer/streamer_delegate";
 import { StreamReader } from "./stream_reader/stream_reader";
 import { StreamMessage } from "./models/stream_message";
 import { WebRTCClientDelegate } from "./webrtc_client/webrtc_client_delegate";
+import { DepthCamera } from "./depth_camera/realsense/depth_camera";
+import { read } from "fs";
 
 class Main implements StreamerDelegate, WebRTCClientDelegate {
 
@@ -18,6 +20,7 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
     streamer: Streamer
     streamReader: StreamReader
     streamMessage: StreamMessage
+    readBuffer: Float32Array
 
     constructor() {
         let urlParams = new URLSearchParams(location.search);
@@ -48,9 +51,10 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
         this.streamMessage = new StreamMessage();
 
         if (this.sender) {
-            this.streamer = new Streamer();
-            this.streamer.startSession({ video: true, audio: false, data: false });
-            this.streamer.delegate = this;
+            this.setupDepth();
+            // this.streamer = new Streamer();
+            // this.streamer.startSession({ video: true, audio: false, data: false });
+            // this.streamer.delegate = this;
         } else {
             this.streamReader = new StreamReader();
             this.streamReader.getCanvas().width = 640;
@@ -58,6 +62,145 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
             document.body.appendChild(this.streamReader.getCanvas());
         }
     }
+
+    private setupDepth = async () => {
+        let videoFrameAvailable = false;
+        let depthStream = await DepthCamera.getDepthStream();
+        let colorStream = await DepthCamera.getColorStreamForDepthStream(depthStream);
+        let dpethVideo = document.createElement('video');
+        dpethVideo.oncanplay = () => { videoFrameAvailable = true };
+        dpethVideo.autoplay = true;
+        dpethVideo.crossOrigin = "anonymous";
+        dpethVideo.srcObject = depthStream;
+
+        let colorVideo = document.createElement('video');
+        colorVideo.srcObject = colorStream;
+        colorVideo.autoplay = true;
+        document.body.appendChild(colorVideo);
+
+        let depthCanvas = document.createElement('canvas');
+        depthCanvas.width = 640;
+        depthCanvas.height = 480;
+        document.body.appendChild(depthCanvas);
+
+        let GL = this._configureGLContext(depthCanvas);
+        let gl = GL.gl;
+
+        let canvas = document.createElement('canvas');
+        canvas.width = depthCanvas.width;
+        canvas.height = depthCanvas.height;
+        document.body.appendChild(canvas);
+
+        let counter = 0;
+
+        setInterval(() => {
+            if (videoFrameAvailable) {
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindTexture(gl.TEXTURE_2D, GL.depth_texture)
+
+                gl.texImage2D(gl.TEXTURE_2D, 0, GL.R32F, GL.RED, gl.FLOAT, dpethVideo);
+
+
+                // ======= Read Pixels
+                let videowidth = dpethVideo.videoWidth;
+                let videoHeight = dpethVideo.videoHeight;
+                // Bind the framebuffer the texture is color-attached to.
+                gl.bindFramebuffer(gl.FRAMEBUFFER, GL.framebuffer);
+                if (!this.readBuffer) {
+                    this.readBuffer = new Float32Array(videowidth * videoHeight);
+                }
+                gl.readPixels(0, 0, videowidth, videoHeight, GL.RED, gl.FLOAT, this.readBuffer);
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+
+                // Show gray colored depth
+                gl.bindBuffer(gl.ARRAY_BUFFER, GL.vertex_buffer);
+                gl.vertexAttribPointer(GL.vertex_location, 2, gl.FLOAT, false, 0, 0);
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, GL.index_buffer);
+                gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+            }
+
+        }, 1000 / 30);
+
+    };
+
+    // Creates WebGL/WebGL2 context used to upload depth video to texture,
+    // read the pixels to Float buffer and optionElally render the texture.
+    _configureGLContext(canvas: HTMLCanvasElement) {
+        let gl: WebGLRenderingContext = canvas.getContext("webgl2") as WebGLRenderingContext;
+
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        // Shaders and program are needed only if rendering depth texture.
+        var vertex_shader = gl.createShader(gl.VERTEX_SHADER);
+        gl.shaderSource(vertex_shader, `
+          attribute vec2 v;
+          varying vec2 t;
+          void main(){
+            gl_Position = vec4(v.x * 2.0 - 1.0, 1.0 - v.y * 2.0, 0, 1);
+            t = v;
+          }`);
+        gl.compileShader(vertex_shader);
+        var pixel_shader = gl.createShader(gl.FRAGMENT_SHADER);
+        gl.shaderSource(pixel_shader, `
+          precision mediump float;
+          uniform sampler2D s;
+          varying vec2 t;
+          void main(){
+            vec4 tex = texture2D(s, t) * vec4(10.0, 10.0, 10.0, 1.0);
+            gl_FragColor = tex.rrra;
+          }`);
+        gl.compileShader(pixel_shader);
+        var program = gl.createProgram();
+        gl.attachShader(program, vertex_shader);
+        gl.attachShader(program, pixel_shader);
+        gl.linkProgram(program);
+        gl.useProgram(program);
+        var vertex_location = gl.getAttribLocation(program, "v");
+        gl.enableVertexAttribArray(vertex_location);
+        gl.uniform1i(gl.getUniformLocation(program, "s"), 0);
+        var vertex_buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]), gl.STATIC_DRAW);
+        var index_buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, index_buffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array([0, 1, 2, 0, 2, 3]), gl.STATIC_DRAW);
+        var depth_texture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, depth_texture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        // Framebuffer for reading back the texture.
+        var framebuffer = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, depth_texture, 0);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+        let RGBA32F = 34836;
+        let RGBA = 6408;
+        let RED = 6403;
+        let R32F = 33326;
+        return { gl, vertex_buffer, vertex_location, index_buffer, depth_texture, framebuffer, RGBA32F, RGBA, RED, R32F };
+    }
+
+
+    private setupDepthTexture = (depth: HTMLCanvasElement) => {
+        let gl = depth.getContext('webgl') as WebGLRenderingContext;
+        let depthTexture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, depthTexture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        // Create a framebuffer for reading back the texture. Bind the texture to it as color attachment.
+        var framebuffer = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, depthTexture, 0);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        return { gl, depthTexture };
+    };
+
 
     private setupEvents = () => {
         document.getElementById('webrtcConnectButton').onclick = this.connect;
