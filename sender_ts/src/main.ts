@@ -90,17 +90,19 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
         canvas.width = depthCanvas.width;
         canvas.height = depthCanvas.height;
         document.body.appendChild(canvas);
+        let ctx = canvas.getContext('2d');
+        let readFormat: number;
 
-        let counter = 0;
-
-        const render = setInterval(() => {
+        setInterval(() => {
             if (videoFrameAvailable) {
                 let frameBuffer = GL.framebuffer;
 
                 gl.activeTexture(gl.TEXTURE0);
                 gl.bindTexture(gl.TEXTURE_2D, GL.depth_texture)
 
-                gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, gl.RED, gl.FLOAT, dpethVideo);
+                if (GL.color_buffer_float_ext) {
+                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, gl.RED, gl.FLOAT, dpethVideo);
+                }
 
                 // ======= Read Pixels
                 let videowidth = depthCanvas.width;
@@ -108,11 +110,29 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
                 // Bind the framebuffer the texture is color-attached to.
                 gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer);
                 if (!this.readBuffer) {
+                    readFormat = gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_FORMAT);
+
+                    if (readFormat == gl.RED && gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_TYPE) == gl.FLOAT) {
+                        this.readBuffer = new Float32Array(dpethVideo.width * dpethVideo.height);
+                        console.log('--- readFormat is:', 'gl.RED');
+                    } else {
+                        this.readBuffer = new Float32Array(dpethVideo.width * dpethVideo.height * 4);
+                        console.log('--- readFormat is:', 'gl.RGBA');
+                    }
                     this.readBuffer = new Float32Array(videowidth * videoHeight);
                 }
-
-                gl.readPixels(0, 0, videowidth, videoHeight, gl.RED, gl.FLOAT, this.readBuffer, 0);
+                gl.readPixels(0, 0, videowidth, videoHeight, readFormat, gl.FLOAT, this.readBuffer, 0);
                 gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+                // ======= Draw RGBA
+                const img = ctx.getImageData(0, 0, videowidth, videoHeight);
+                const data = img.data;
+                const stride = (readFormat === gl.RED) ? 1 : 4;
+                for (let i = 0, j = 0; i < data.length; i += 4, j += stride) {
+                    data[i] = this.readBuffer[j] * 255;
+                    data[i + 3] = 255;
+                }
+                ctx.putImageData(img, 0, 0);
 
                 // Show gray colored depth
                 gl.bindBuffer(gl.ARRAY_BUFFER, GL.vertex_buffer);
@@ -131,7 +151,6 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
         let gl: WebGL2RenderingContext = canvas.getContext("webgl2") as WebGL2RenderingContext;
 
         gl.getExtension('EXT_color_buffer_float');
-        gl.getExtension('OES_texture_float_linear');
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         // Shaders and program are needed only if rendering depth texture.
@@ -180,11 +199,8 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
         gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, depth_texture, 0);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-        let RGBA32F = 34836;
-        let RGBA = 6408;
-        let RED = 6403;
-        let R32F = 33326;
-        return { gl, vertex_buffer, vertex_location, index_buffer, depth_texture, framebuffer };
+        let color_buffer_float_ext = true;
+        return { gl, vertex_buffer, vertex_location, index_buffer, depth_texture, framebuffer, color_buffer_float_ext };
     }
 
 
