@@ -113,13 +113,12 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
                     readFormat = gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_FORMAT);
 
                     if (readFormat == gl.RED && gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_TYPE) == gl.FLOAT) {
-                        this.readBuffer = new Float32Array(dpethVideo.width * dpethVideo.height);
+                        this.readBuffer = new Float32Array(videowidth * videoHeight);
                         console.log('--- readFormat is:', 'gl.RED');
                     } else {
-                        this.readBuffer = new Float32Array(dpethVideo.width * dpethVideo.height * 4);
+                        this.readBuffer = new Float32Array(videowidth * videoHeight * 4);
                         console.log('--- readFormat is:', 'gl.RGBA');
                     }
-                    this.readBuffer = new Float32Array(videowidth * videoHeight);
                 }
                 gl.readPixels(0, 0, videowidth, videoHeight, readFormat, gl.FLOAT, this.readBuffer, 0);
                 gl.bindFramebuffer(gl.FRAMEBUFFER, null);
