@@ -91,7 +91,15 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
         canvas.height = depthCanvas.height;
         document.body.appendChild(canvas);
         let ctx = canvas.getContext('2d');
+
         let readFormat: number;
+
+        let _depthCanvas = document.createElement('canvas');
+        _depthCanvas.width = 640;
+        _depthCanvas.height = 480;
+        document.body.appendChild(_depthCanvas);
+        let _GL = this._configureGLContext(_depthCanvas);
+        let _gl = _GL.gl;
 
         setInterval(() => {
             if (videoFrameAvailable) {
@@ -127,9 +135,10 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
                 const img = ctx.getImageData(0, 0, videowidth, videoHeight);
                 const data = img.data;
                 const stride = (readFormat === gl.RED) ? 1 : 4;
-                for (let i = 0, j = 0; i < data.length; i += 4, j += stride) {
-                    data[i] = this.readBuffer[j] * 255;
-                    data[i + 3] = 255;
+                const _pixels = new Int8Array(this.readBuffer.buffer);
+                const pixels = new Uint8Array(_pixels.buffer);
+                for (let i = 0; i < data.length; i += 1) {
+                    data[i] = pixels[i];
                 }
                 ctx.putImageData(img, 0, 0);
 
@@ -138,6 +147,22 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
                 gl.vertexAttribPointer(GL.vertex_location, 2, gl.FLOAT, false, 0, 0);
                 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, GL.index_buffer);
                 gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+
+
+                // ==== TEST ====
+                _gl.activeTexture(_gl.TEXTURE0);
+                _gl.bindTexture(_gl.TEXTURE_2D, _GL.depth_texture)
+
+                if (_GL.color_buffer_float_ext) {
+                    _gl.texImage2D(_gl.TEXTURE_2D, 0, _gl.R32F, _gl.RED, _gl.FLOAT, dpethVideo);
+                }
+
+                _gl.bindBuffer(_gl.ARRAY_BUFFER, _GL.vertex_buffer);
+                _gl.vertexAttribPointer(_GL.vertex_location, 2, _gl.FLOAT, false, 0, 0);
+                _gl.bindBuffer(_gl.ELEMENT_ARRAY_BUFFER, _GL.index_buffer);
+                _gl.drawElements(_gl.TRIANGLES, 6, _gl.UNSIGNED_SHORT, 0);
+
+                // ==============
             }
 
         }, 1000 / 30);
