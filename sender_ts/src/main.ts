@@ -9,7 +9,6 @@ import { StreamReader } from "./stream_reader/stream_reader";
 import { StreamMessage } from "./models/stream_message";
 import { WebRTCClientDelegate } from "./webrtc_client/webrtc_client_delegate";
 import { DepthCamera } from "./depth_camera/realsense/depth_camera";
-import { read } from "fs";
 
 class Main implements StreamerDelegate, WebRTCClientDelegate {
 
@@ -51,7 +50,7 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
         this.streamMessage = new StreamMessage();
 
         if (this.sender) {
-            this.setupDepth();
+            // this.setupDepth();
             // this.streamer = new Streamer();
             // this.streamer.startSession({ video: true, audio: false, data: false });
             // this.streamer.delegate = this;

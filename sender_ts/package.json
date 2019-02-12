@@ -14,12 +14,14 @@
   "description": "",
   "devDependencies": {
     "electron": "^4.0.4",
+    "electron-rebuild": "^1.8.4",
     "ts-loader": "^5.3.3",
     "typescript": "^3.3.3",
     "webpack": "^4.29.3",
     "webpack-cli": "^3.2.3"
   },
   "dependencies": {
-    "@types/webgl2": "0.0.4"
+    "@types/webgl2": "0.0.4",
+    "node-librealsense": "^0.2130.0"
   }
 }
