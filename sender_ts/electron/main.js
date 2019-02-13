@@ -40,6 +40,7 @@ app.on('ready', () => {
         let value = depthFrame[i] % 256;
         uint8Array[i] = value;
         */
+
         uint8Array[i] = depthFrame[i] >>> 8;
         uint8Array[depthFrame.length / 2 + i] = depthFrame[i] & 255;
       }

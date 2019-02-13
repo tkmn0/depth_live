@@ -71,6 +71,14 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
         const img = context.getImageData(0, 0, videowidth, videoHeight);
         const data = img.data;
 
+        let checkCanvas = document.createElement('canvas');
+        checkCanvas.width = 640;
+        checkCanvas.height = 480;
+        document.body.appendChild(checkCanvas);
+        let checkContext = checkCanvas.getContext('2d');
+        let checkImage = checkContext.getImageData(0, 0, 640, 480);
+        let checkData = checkImage.data;
+
         // raw depth length: 307200 // 16bit
         // depth length: 614400 // upper 8bit + lower 8bit
         // rgba 32bit (8, 8, 8, 8) => color 1px depth 2px
@@ -78,16 +86,87 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
         // 640 * 480 / 2 
 
         ipcRenderer.on('depth', (event, depth: Uint8Array) => {
-            console.log(depth.length);
+
             const upper_bit_arr = depth.slice(0, depth.length / 2);
             const lower_bit_arr = depth.slice(depth.length / 2, depth.length);
 
+            /*
             for (let i = 0; i < data.length; i += 2) {
-                data[i] = upper_bit_arr[i];
-                data[i + 1] = lower_bit_arr[i];
+                data[i] = upper_bit_arr[i];    // r, b
+                data[i + 1] = lower_bit_arr[i]; // g, a
+            }
+            */
+            for (let i = 0; i < data.length; i += 4) {
+                data[i] = upper_bit_arr[i / 4];          // r
+                data[i + 1] = lower_bit_arr[i / 4];      // g
+                data[i + 2] = upper_bit_arr[i / 4 + 1];  // b
+                data[i + 3] = lower_bit_arr[i / 4 + 1];  // a
             }
 
             context.putImageData(img, 0, 0);
+
+            const pixel: Uint8Array = new Uint8Array(data.buffer);
+            const rawDepth: Uint16Array = new Uint16Array(depth.length / 2);
+
+            /*
+            for (let i = 0; i < pixel.length; i += 4) {
+                rawDepth[i] = (pixel[i] << 8) + pixel[i + 1];
+                rawDepth[i + 1] = (pixel[i + 2] << 8) + pixel[i + 3];
+            }
+            */
+
+
+            console.log('pixel length:', pixel.length); // 153600 (8, 8, 8, 8)bit
+            console.log('rawdepth length:', rawDepth.length); // 307200 (16)bit
+
+            let upper = new Uint8Array(depth.length / 2);
+            let lower = new Uint8Array(depth.length / 2);
+
+            for (let i = 0; i < pixel.length; i += 4) {
+                let r = pixel[i];
+                let g = pixel[i + 1];
+                let b = pixel[i + 2];
+                let a = pixel[i + 3];
+
+                // first = r + g;
+                // secont = b + a;
+
+                /*
+                rawDepth[i / 4] = (r << 8) + g;
+                rawDepth[i / 4 + 1] = (b << 8) + a;
+                */
+                upper[i / 2] = r;
+                upper[i / 2 + 1] = g;
+                lower[i / 2] = b;
+                lower[i / 2 + 1] = a;
+            }
+
+            /*
+            for (let i = 0; i < rawDepth.length, i += 2;) {
+    
+                
+                let r = pixel[i * 2];
+                let g = pixel[i * 2 + 1];
+                let b = pixel[i * 2 + 2];
+                let a = pixel[i * 2 + 3];
+                rawDepth[i] = (r << 8) + g;
+                rawDepth[i + 1] = (b << 8) + a;
+                
+            }
+            */
+
+            let j = 0;
+            for (let i = 0; i < checkData.length; i += 4) {
+                let red = rawDepth[j] % 256;
+                checkData[i] = red;
+                checkData[i + 1] = 0;
+                checkData[i + 2] = 0;
+                checkData[i + 3] = 0xff;
+                j += 1;
+            }
+
+            checkContext.putImageData(checkImage, 0, 0);
+
         });
     }
 
