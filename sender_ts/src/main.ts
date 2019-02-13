@@ -62,7 +62,7 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
             document.body.appendChild(this.streamReader.getCanvas());
         }
 
-        let videowidth = 640 / 2, videoHeight = 480 / 2;
+        let videowidth = 640 / 2, videoHeight = 480 / 4;
         let testCanvas = document.createElement('canvas');
         testCanvas.width = videowidth;
         testCanvas.height = videoHeight;
@@ -71,45 +71,23 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
         const img = context.getImageData(0, 0, videowidth, videoHeight);
         const data = img.data;
 
-        let remoteCanvas = document.createElement('canvas');
-        remoteCanvas.width = videowidth * 2;
-        remoteCanvas.height = videoHeight * 2;
-        document.body.appendChild(remoteCanvas);
-        let remoteContext = remoteCanvas.getContext('2d');
-        const remoteImage = remoteContext.getImageData(0, 0, videowidth * 2, videoHeight * 2);
-        const remoteData = remoteImage.data;
+        // raw depth length: 307200 // 16bit
+        // depth length: 614400 // upper 8bit + lower 8bit
+        // rgba 32bit (8, 8, 8, 8) => color 1px depth 2px
+        // color_webp_length => raw depth length /2
+        // 640 * 480 / 2 
 
-        ipcRenderer.on('depth', (event, depth) => {
-            // console.log('canvas img:', img.data.length);
-            // console.log('depth length:', depth.length);
+        ipcRenderer.on('depth', (event, depth: Uint8Array) => {
+            console.log(depth.length);
+            const upper_bit_arr = depth.slice(0, depth.length / 2);
+            const lower_bit_arr = depth.slice(depth.length / 2, depth.length);
 
-            /*
-            let j = 0;
-
-            for (let i = 0; i < data.length; i += 4) {
-                data[i] = depth[j];
-                data[i + 1] = 0;
-                data[i + 2] = 0;
-                data[i + 3] = 255;
-                j += 1;
-            }
-            */
-            for (let i = 0; i < data.length; i++) {
-                data[i] = depth[i];
+            for (let i = 0; i < data.length; i += 2) {
+                data[i] = upper_bit_arr[i];
+                data[i + 1] = lower_bit_arr[i];
             }
 
             context.putImageData(img, 0, 0);
-
-            let pixels = new Uint8Array(data.buffer);
-            let r = 0;
-            for (let i = 0; i < remoteData.length; i += 4) {
-                remoteData[i] = pixels[r];
-                remoteData[i + 1] = 0;
-                remoteData[i + 2] = 0;
-                remoteData[i + 3] = 255;
-                r += 1;
-            }
-            remoteContext.putImageData(remoteImage, 0, 0);
         });
     }
 

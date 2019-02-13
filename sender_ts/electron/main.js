@@ -26,17 +26,22 @@ app.on('ready', () => {
     console.log(e);
   }
 
-
   console.log('pipeline start');
 
   setInterval(() => {
     if (mainWindow != null) {
       const frameSet = pipeline.waitForFrames();
       const depthFrame = frameSet.depthFrame.data; // Uint16Array
-      const uint8Array = new Uint8Array(depthFrame.length);
+      // const uint8Array = new Uint8Array(depthFrame.length);
+      const uint8Array = new Uint8Array(depthFrame.length * 2);
+
       for (let i = 0; i < depthFrame.length; i += 1) {
+        /*
         let value = depthFrame[i] % 256;
         uint8Array[i] = value;
+        */
+        uint8Array[i] = depthFrame[i] >>> 8;
+        uint8Array[depthFrame.length / 2 + i] = depthFrame[i] & 255;
       }
 
       mainWindow.webContents.send('depth', uint8Array);
