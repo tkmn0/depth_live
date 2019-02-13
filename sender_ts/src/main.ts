@@ -71,9 +71,18 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
         const img = context.getImageData(0, 0, videowidth, videoHeight);
         const data = img.data;
 
+        let remoteCanvas = document.createElement('canvas');
+        remoteCanvas.width = videowidth * 2;
+        remoteCanvas.height = videoHeight * 2;
+        document.body.appendChild(remoteCanvas);
+        let remoteContext = remoteCanvas.getContext('2d');
+        const remoteImage = remoteContext.getImageData(0, 0, videowidth * 2, videoHeight * 2);
+        const remoteData = remoteImage.data;
+
         ipcRenderer.on('depth', (event, depth) => {
-            console.log('canvas img:', img.data.length);
-            console.log('depth length:', depth.length);
+            // console.log('canvas img:', img.data.length);
+            // console.log('depth length:', depth.length);
+
             /*
             let j = 0;
 
@@ -90,6 +99,17 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
             }
 
             context.putImageData(img, 0, 0);
+
+            let pixels = new Uint8Array(data.buffer);
+            let r = 0;
+            for (let i = 0; i < remoteData.length; i += 4) {
+                remoteData[i] = pixels[r];
+                remoteData[i + 1] = 0;
+                remoteData[i + 2] = 0;
+                remoteData[i + 3] = 255;
+                r += 1;
+            }
+            remoteContext.putImageData(remoteImage, 0, 0);
         });
     }
 
