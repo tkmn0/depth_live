@@ -12,6 +12,7 @@ module.exports = {
         // 出力ファイル名
         filename: 'main.js'
     },
+    target: 'electron-renderer',
     module: {
         rules: [
             {
