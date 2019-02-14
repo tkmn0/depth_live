@@ -62,18 +62,19 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
             document.body.appendChild(this.streamReader.getCanvas());
         }
 
-        let videowidth = 640 / 2, videoHeight = 480 / 4;
+        let videowidth = 640, videoHeight = 480;
         let testCanvas = document.createElement('canvas');
-        testCanvas.width = videowidth;
-        testCanvas.height = videoHeight;
+        testCanvas.width = 480;
+        testCanvas.height = 320;
         document.body.appendChild(testCanvas);
         let context = testCanvas.getContext('2d');
-        const img = context.getImageData(0, 0, videowidth, videoHeight);
+        const img = context.getImageData(0, 0, 480, 320);
         const data = img.data;
 
         let checkCanvas = document.createElement('canvas');
         checkCanvas.width = 640;
         checkCanvas.height = 480;
+        checkCanvas.id = 'check';
         document.body.appendChild(checkCanvas);
         let checkContext = checkCanvas.getContext('2d');
         let checkImage = checkContext.getImageData(0, 0, 640, 480);
@@ -85,75 +86,52 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
         // color_webp_length => raw depth length /2
         // 640 * 480 / 2 
 
+        // 16bit => upper 8bit & lower 8bit
+        // canvas pixel r, g, b, a => 8, 8, 8, 8 bit => 16bit depth が 2 pixel 分 格納できる
+        // depth 640 x 480 // 307200px ( 1px 16bit)
+        // => 601440px ( 1px 8bit)
+        // => 150360px (8, 8, 8, 8) の rgba を作れる 480×320
+        // => これを復元する
+        // => 全てのpixelに対し、r + g => upper 8bit (307200), b + a => lower 8bit (307200) を作成
+        // => upper 8bit + lower 8bit で 307200 の Uint16Arrayを復元
+
+        // depth 601440px
         ipcRenderer.on('depth', (event, depth: Uint8Array) => {
 
             const upper_bit_arr = depth.slice(0, depth.length / 2);
             const lower_bit_arr = depth.slice(depth.length / 2, depth.length);
 
-            /*
-            for (let i = 0; i < data.length; i += 2) {
-                data[i] = upper_bit_arr[i];    // r, b
-                data[i + 1] = lower_bit_arr[i]; // g, a
-            }
-            */
             for (let i = 0; i < data.length; i += 4) {
-                data[i] = upper_bit_arr[i / 4];          // r
-                data[i + 1] = lower_bit_arr[i / 4];      // g
-                data[i + 2] = upper_bit_arr[i / 4 + 1];  // b
-                data[i + 3] = lower_bit_arr[i / 4 + 1];  // a
+                data[i] = upper_bit_arr[i / 2];          // r
+                data[i + 1] = lower_bit_arr[i / 2];      // g
+                data[i + 2] = upper_bit_arr[i / 2 + 1];  // b
+                data[i + 3] = lower_bit_arr[i / 2 + 1];  // a
             }
 
             context.putImageData(img, 0, 0);
 
             const pixel: Uint8Array = new Uint8Array(data.buffer);
             const rawDepth: Uint16Array = new Uint16Array(depth.length / 2);
+            const upper = new Uint8Array(depth.length / 2);
+            const lower = new Uint8Array(depth.length / 2);
 
-            /*
-            for (let i = 0; i < pixel.length; i += 4) {
-                rawDepth[i] = (pixel[i] << 8) + pixel[i + 1];
-                rawDepth[i + 1] = (pixel[i + 2] << 8) + pixel[i + 3];
-            }
-            */
-
-
-            console.log('pixel length:', pixel.length); // 153600 (8, 8, 8, 8)bit
-            console.log('rawdepth length:', rawDepth.length); // 307200 (16)bit
-
-            let upper = new Uint8Array(depth.length / 2);
-            let lower = new Uint8Array(depth.length / 2);
-
+            // 601440 times loop
             for (let i = 0; i < pixel.length; i += 4) {
                 let r = pixel[i];
                 let g = pixel[i + 1];
                 let b = pixel[i + 2];
                 let a = pixel[i + 3];
 
-                // first = r + g;
-                // secont = b + a;
-
-                /*
-                rawDepth[i / 4] = (r << 8) + g;
-                rawDepth[i / 4 + 1] = (b << 8) + a;
-                */
                 upper[i / 2] = r;
-                upper[i / 2 + 1] = g;
-                lower[i / 2] = b;
+                lower[i / 2] = g;
+                upper[i / 2 + 1] = b;
                 lower[i / 2 + 1] = a;
+
             }
 
-            /*
-            for (let i = 0; i < rawDepth.length, i += 2;) {
-    
-                
-                let r = pixel[i * 2];
-                let g = pixel[i * 2 + 1];
-                let b = pixel[i * 2 + 2];
-                let a = pixel[i * 2 + 3];
-                rawDepth[i] = (r << 8) + g;
-                rawDepth[i + 1] = (b << 8) + a;
-                
+            for (let i = 0; i < upper.length; i += 1) {
+                rawDepth[i] = (upper[i] << 8) + lower[i];
             }
-            */
 
             let j = 0;
             for (let i = 0; i < checkData.length; i += 4) {
@@ -161,12 +139,34 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
                 checkData[i] = red;
                 checkData[i + 1] = 0;
                 checkData[i + 2] = 0;
-                checkData[i + 3] = 0xff;
+                checkData[i + 3] = 255;
                 j += 1;
             }
 
             checkContext.putImageData(checkImage, 0, 0);
 
+        });
+
+        let redCanvas = document.createElement('canvas');
+        redCanvas.width = 640;
+        redCanvas.height = 480;
+        redCanvas.id = 'goal';
+        document.body.appendChild(redCanvas);
+        let redContext = redCanvas.getContext('2d');
+        let redImg = redContext.getImageData(0, 0, 640, 480);
+        let redData = redImg.data;
+
+        ipcRenderer.on('red', (ev, depth: Uint8Array) => {
+            let j = 0;
+            for (let i = 0; i < redData.length; i += 4) {
+                redData[i] = depth[j];
+                redData[i + 1] = 0;
+                redData[i + 2] = 0;
+                redData[i + 3] = 255;
+                j += 1;
+            }
+
+            redContext.putImageData(redImg, 0, 0);
         });
     }
 
