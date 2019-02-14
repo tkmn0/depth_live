@@ -148,6 +148,7 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
 
             checkContext.putImageData(checkImage, 0, 0);
 
+            pointCloudScene.updateTexture(rawDepth);
         });
 
         let redCanvas = document.createElement('canvas');
