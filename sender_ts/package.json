@@ -13,17 +13,17 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
-    "@types/three": "^0.93.20",
     "electron": "^4.0.4",
     "electron-rebuild": "^1.8.4",
-    "three": "^0.101.1",
     "ts-loader": "^5.3.3",
     "typescript": "^3.3.3",
     "webpack": "^4.29.3",
     "webpack-cli": "^3.2.3"
   },
   "dependencies": {
+    "@types/three": "^0.93.20",
     "@types/webgl2": "0.0.4",
-    "node-librealsense": "^0.2130.0"
+    "node-librealsense": "^0.2130.0",
+    "three": "^0.101.1"
   }
 }
