@@ -10,6 +10,8 @@ import { StreamMessage } from "./models/stream_message";
 import { WebRTCClientDelegate } from "./webrtc_client/webrtc_client_delegate";
 import { DepthCamera } from "./depth_camera/realsense/depth_camera";
 import { ipcRenderer } from "electron";
+import { PointCloudScene } from "./three/point_cloud_scene";
+
 
 class Main implements StreamerDelegate, WebRTCClientDelegate {
 
@@ -62,7 +64,8 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
             document.body.appendChild(this.streamReader.getCanvas());
         }
 
-        let videowidth = 640, videoHeight = 480;
+        const pointCloudScene = new PointCloudScene();
+
         let testCanvas = document.createElement('canvas');
         testCanvas.width = 480;
         testCanvas.height = 320;
