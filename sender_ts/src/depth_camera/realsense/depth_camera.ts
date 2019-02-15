@@ -143,8 +143,14 @@ export class DepthCamera {
     //
     // See the documentation at
     // https://w3c.github.io/mediacapture-depth/#synchronizing-depth-and-color-video-rendering
-    static getCameraCalibration(depth_stream) {
-        const label = depth_stream.getVideoTracks()[0].label;
+    static getCameraCalibration(depth_stream, deviceName) {
+        let label = "";
+        if (deviceName) {
+            label = deviceName;
+        } else {
+            label = depth_stream.getVideoTracks()[0].label;
+        }
+
         const cameraName = label.includes("R200") ? "R200"
             : (label.includes("Camera S") || label.includes("SR300")) ? "SR300"
                 : label.includes("ZR300") ? "ZR300"
@@ -153,6 +159,7 @@ export class DepthCamera {
                             : label.includes(") 4") ? "generic4"
                                 : label;
 
+        console.log('cameraName:', cameraName);
         const DistortionModel = {
             NONE: 0,
             MODIFIED_BROWN_CONRADY: 1,

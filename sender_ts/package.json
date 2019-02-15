@@ -24,6 +24,7 @@
     "@types/three": "^0.93.20",
     "@types/webgl2": "0.0.4",
     "node-librealsense": "^0.2130.0",
-    "three": "^0.101.1"
+    "three": "^0.101.1",
+    "three-orbitcontrols": "^2.101.1"
   }
 }
