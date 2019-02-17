@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { ShaderLoader } from "../shader_loader"
 
 export class TemplateScene {
 
@@ -13,7 +14,7 @@ export class TemplateScene {
         this.animate();
     }
 
-    private initialize() {
+    private async initialize() {
 
         this.renderer = new THREE.WebGLRenderer();
         this.renderer.setSize(800, 600);
@@ -29,6 +30,10 @@ export class TemplateScene {
         this.box = new THREE.Mesh(geometry, material);
         this.box.position.z = -5;
         this.scene.add(this.box);
+
+        let shaderLoader = new ShaderLoader();
+        let shader = await shaderLoader.loadAsync('../lib/gl/test.vert', null);
+        console.log(shader.Vert);
 
         const light = new THREE.DirectionalLight(0xffffff);
         light.position.set(1, 1, 1);
