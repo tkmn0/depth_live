@@ -42,7 +42,6 @@ export class PointCloudScene {
         this.dataTexture.type = THREE.UnsignedShort4444Type.valueOf();
         this.dataTexture.needsUpdate = true;
 
-
         const plane = new THREE.Mesh(
             new THREE.PlaneGeometry(640, 480, 1, 1),
             new THREE.MeshBasicMaterial({

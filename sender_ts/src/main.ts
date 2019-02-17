@@ -11,6 +11,8 @@ import { WebRTCClientDelegate } from "./webrtc_client/webrtc_client_delegate";
 import { DepthCamera } from "./depth_camera/realsense/depth_camera";
 import { ipcRenderer } from "electron";
 import { PointCloudScene } from "./three/point_cloud_scene";
+const fs = require('fs');
+const dataUriToBuffer = require('data-uri-to-buffer');
 
 
 class Main implements StreamerDelegate, WebRTCClientDelegate {
@@ -67,6 +69,7 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
         const pointCloudScene = new PointCloudScene();
 
         let testCanvas = document.createElement('canvas');
+        testCanvas.id = 'depth_rgba';
         testCanvas.width = 480;
         testCanvas.height = 320;
         document.body.appendChild(testCanvas);
@@ -118,7 +121,6 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
             const upper = new Uint8Array(depth.length / 2);
             const lower = new Uint8Array(depth.length / 2);
 
-            // 601440 times loop
             for (let i = 0; i < pixel.length; i += 4) {
                 let r = pixel[i];
                 let g = pixel[i + 1];
@@ -177,6 +179,23 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
     private setupEvents = () => {
         document.getElementById('webrtcConnectButton').onclick = this.connect;
         document.getElementById('webrtcDisconnectButton').onclick = this.disconnect;
+
+        window.document.onkeydown = (event) => {
+            if (event.key == 's') {
+                this.saveDepthPng();
+            }
+        };
+    };
+
+    private saveDepthPng = () => {
+        const canvas = document.getElementById('depth_rgba') as HTMLCanvasElement;
+        const dataUrl = canvas.toDataURL('image/png', 1.0);
+        const decode = dataUriToBuffer(dataUrl);
+        fs.writeFile('./test.png', decode, (err) => {
+            if (err) {
+                console.log(err);
+            }
+        });
     };
 
     private connect = async () => {
