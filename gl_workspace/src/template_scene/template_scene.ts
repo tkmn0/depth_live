@@ -68,7 +68,7 @@ export class TemplateScene {
 
         this.scene = new THREE.Scene();
 
-        this.camera = new THREE.PerspectiveCamera(45, 800 / 600, 1, 10000);
+        this.camera = new THREE.PerspectiveCamera(45, 800 / 600, 1, 10000 * 2.0);
         this.camera.position.set(0, 0, 1000);
         this.constrols = new OrbitControls(this.camera);
 
@@ -78,22 +78,19 @@ export class TemplateScene {
     }
 
     private setupDepthTexture = () => {
-        // this.buffer = new Uint16Array(640 * 480);
-        // for (var i = 0; i < this.buffer.length; i++) {
-        //     this.buffer[i] = Math.random() * 65535
-        // }
         this.dataTexture = new THREE.DataTexture(this.buffer, 640, 480, THREE.RGBAFormat);
         this.dataTexture.type = THREE.UnsignedShort4444Type.valueOf();
+        this.dataTexture.minFilter = THREE.NearestFilter;
         this.dataTexture.needsUpdate = true;
 
-        // const plane = new THREE.Mesh(
-        //     new THREE.PlaneGeometry(640, 480, 1, 1),
-        //     new THREE.MeshBasicMaterial({
-        //         map: this.dataTexture,
-        //         side: THREE.FrontSide
-        //     })
-        // );
-        // this.scene.add(plane);
+        const plane = new THREE.Mesh(
+            new THREE.PlaneGeometry(640, 480, 1, 1),
+            new THREE.MeshBasicMaterial({
+                map: this.dataTexture,
+                side: THREE.FrontSide
+            })
+        );
+        this.scene.add(plane);
     };
 
 
@@ -153,6 +150,7 @@ export class TemplateScene {
         this.scene.add(pointCloudMesh);
         this.pointCloudMesh = pointCloudMesh;
         this.pointCloudMaterial = shaderMaterial;
+        pointCloudMesh.position.set(-320, -240, 0);
     }
 
     private animate() {
@@ -167,8 +165,6 @@ export class TemplateScene {
             let time = performance.now();
             if (this.pointCloudMaterial && this.pointCloudMesh) {
                 this.pointCloudMaterial.uniforms['time'].value = time;
-                // this.pointCloudMesh.rotation.x = (Math.cos(Math.PI * time * 0.1 / 360) * 0.05) + 0.1;
-                // this.pointCloudMesh.rotation.y += Math.PI / 720;
             }
             this.constrols.update();
             this.renderer.render(this.scene, this.camera);
