@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import { ShaderLoader } from "../shader_loader"
 const OrbitControls = require("three-orbitcontrols");
-const fs = require('fs');
 
 export class TemplateScene {
 
@@ -15,6 +14,8 @@ export class TemplateScene {
     private pointCloudMesh: THREE.Points;
 
     private buffer: Uint16Array;
+    private bufferView: ArrayBufferView;
+    // private buffer: Float32Array;
     private dataTexture: THREE.DataTexture;
 
     constructor() {
@@ -52,7 +53,7 @@ export class TemplateScene {
             rawDepth[i] = (upper[i] << 8) + lower[i];
         }
         this.buffer = new Uint16Array(rawDepth);
-
+        this.bufferView = new DataView(rawDepth.buffer);
         this.initialize();
         // this.addBox();
         this.setupDepthTexture();
@@ -82,7 +83,7 @@ export class TemplateScene {
         this.dataTexture.type = THREE.UnsignedShort4444Type.valueOf();
         this.dataTexture.minFilter = THREE.NearestFilter;
         this.dataTexture.needsUpdate = true;
-
+        this.dataTexture.unpackAlignment = 4;
         const plane = new THREE.Mesh(
             new THREE.PlaneGeometry(640, 480, 1, 1),
             new THREE.MeshBasicMaterial({
@@ -90,7 +91,7 @@ export class TemplateScene {
                 side: THREE.FrontSide
             })
         );
-        this.scene.add(plane);
+        //this.scene.add(plane);
     };
 
 
@@ -112,6 +113,7 @@ export class TemplateScene {
 
         const pointCloudGeometry = new THREE.BufferGeometry();
         let positions = new Float32Array(width * height * 3);
+        let indices = [];
         let colors = [];
         for (let i = 0; i < 640 * 480 * 3; i++) {
             colors.push(Math.random() * 255.0);
@@ -120,6 +122,7 @@ export class TemplateScene {
             colors.push(Math.random() * 255.0);
         }
 
+
         for (var i = 0, j = 0, l = positions.length; i < l; i += 3, j++) {
 
             positions[i] = j % 640; // x
@@ -127,11 +130,20 @@ export class TemplateScene {
             positions[i + 2] = 0; // z
         }
 
+        for (let i = 0; i < width; i++) {
+            for (let j = 0; j < height; j++) {
+                indices.push(i);
+                indices.push(j);
+            }
+        }
+
         let positionAttribyte = new THREE.Float32BufferAttribute(positions, 3);
         let colorAttribyte = new THREE.Uint8BufferAttribute(colors, 4);
+        let indicesAttrigubte = new THREE.Float32BufferAttribute(indices, 2);
         colorAttribyte.normalized = true;
         pointCloudGeometry.addAttribute('position', positionAttribyte);
         pointCloudGeometry.addAttribute('color', colorAttribyte);
+        pointCloudGeometry.addAttribute('depth_texture_index', indicesAttrigubte);
 
         let shaderMaterial = new THREE.ShaderMaterial({
             uniforms: {
