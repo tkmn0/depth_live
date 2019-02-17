@@ -1,5 +1,5 @@
 
 export class ShaderEntity {
-    Vert: String
-    Fragment: String
+    Vert: string
+    Fragment: string
 }
