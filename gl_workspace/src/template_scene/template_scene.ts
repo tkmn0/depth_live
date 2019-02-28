@@ -70,7 +70,7 @@ export class TemplateScene {
         this.scene = new THREE.Scene();
 
         this.camera = new THREE.PerspectiveCamera(45, 800 / 600, 1, 10000 * 2.0);
-        this.camera.position.set(0, 0, 1000);
+        this.camera.position.set(0, 0, 10);
         this.constrols = new OrbitControls(this.camera);
 
         const light = new THREE.DirectionalLight(0xffffff);
@@ -81,9 +81,7 @@ export class TemplateScene {
     private setupDepthTexture = () => {
         this.dataTexture = new THREE.DataTexture(this.buffer, 640, 480, THREE.RGBAFormat);
         this.dataTexture.type = THREE.UnsignedShort4444Type.valueOf();
-        this.dataTexture.minFilter = THREE.NearestFilter;
         this.dataTexture.needsUpdate = true;
-        this.dataTexture.unpackAlignment = 4;
         const plane = new THREE.Mesh(
             new THREE.PlaneGeometry(640, 480, 1, 1),
             new THREE.MeshBasicMaterial({
@@ -121,11 +119,9 @@ export class TemplateScene {
             colors.push(Math.random() * 255.0);
             colors.push(Math.random() * 255.0);
         }
-
-
         for (var i = 0, j = 0, l = positions.length; i < l; i += 3, j++) {
 
-            positions[i] = j % 640; // x
+            positions[i] = 0;//j % 640; // x
             positions[i + 1] = Math.floor(j / 640); // y
             positions[i + 2] = 0; // z
         }
@@ -137,13 +133,13 @@ export class TemplateScene {
             }
         }
 
-        let positionAttribyte = new THREE.Float32BufferAttribute(positions, 3);
-        let colorAttribyte = new THREE.Uint8BufferAttribute(colors, 4);
-        let indicesAttrigubte = new THREE.Float32BufferAttribute(indices, 2);
-        colorAttribyte.normalized = true;
-        pointCloudGeometry.addAttribute('position', positionAttribyte);
-        pointCloudGeometry.addAttribute('color', colorAttribyte);
-        pointCloudGeometry.addAttribute('depth_texture_index', indicesAttrigubte);
+        let positionAttribute = new THREE.Float32BufferAttribute(positions, 3);
+        let colorAttribute = new THREE.Uint8BufferAttribute(colors, 4);
+        let indicesAttribute = new THREE.Float32BufferAttribute(indices, 2);
+        colorAttribute.normalized = true;
+        pointCloudGeometry.addAttribute('position', positionAttribute);
+        pointCloudGeometry.addAttribute('color', colorAttribute);
+        pointCloudGeometry.addAttribute('depth_texture_index', indicesAttribute);
 
         let shaderMaterial = new THREE.ShaderMaterial({
             uniforms: {
@@ -162,7 +158,7 @@ export class TemplateScene {
         this.scene.add(pointCloudMesh);
         this.pointCloudMesh = pointCloudMesh;
         this.pointCloudMaterial = shaderMaterial;
-        pointCloudMesh.position.set(-320, -240, 0);
+        //pointCloudMesh.position.set(-320, -240, 0);
     }
 
     private animate() {

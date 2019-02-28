@@ -3,38 +3,25 @@ attribute vec4 color;
 attribute vec2 depth_texture_index;
 uniform float time;
 uniform sampler2D depth_texture;
-uniform float width;
-uniform float height;
-varying vec4 vColor;
 varying float vDepth;
-varying vec2 vUv;
-const float XtoZ = 1.11146; // tan( 1.0144686 / 2.0 ) * 2.0;
-const float YtoZ = 0.83359; // tan( 0.7898090 / 2.0 ) * 2.0;
+const vec2 u_depth_offset = vec2(315.847442626953, 241.684616088867);
+const vec2 u_depth_focal_length = vec2(643.142272949219, 643.142272949219);
+const float u_depth_scale = 0.00100000005;
+
+vec4 depth_deproject(vec2 index, float depth) {
+   vec2 position2d = (index - u_depth_offset) / u_depth_focal_length;
+   return vec4(position2d * depth, depth, 1.0);
+}
 
 void main(){
-    /*
-    vUv = vec2(position.x/ width, position.y/ height);
-    vec4 depth_color = texture2D(depth_texture, vUv);
-    vColor = depth_color;
-    // float depth = (depth_color.w + depth_color.z * 16.0+ depth_color.y * 16.0 * 16.0 + depth_color.x * 16.0 * 16.0 * 16.0);
-    float depth = ( depth_color.x + depth_color.y + depth_color.z ) / 3.0 * 10.0;
-    // float depth = (depth_color.x + depth_color.y + depth_color.z + depth_color.w) * 10.0;
-    float z = ( 1.0 - depth ) * (3664.0 - 1.0) + 1.0;
-    // float x = position.x;
-    // float y = position.y;
-    // float z = depth;
-    vec4 pos = vec4(( position.x / width - 0.5 ) * z * XtoZ, ( position.y / height - 0.5 ) * z * YtoZ, - z + 2333.0, 1.0);
-    // vec4 pos = vec4(x, y, z, 1.0);
-    gl_PointSize = 1.5;
-    gl_Position = projectionMatrix * modelViewMatrix * pos;
-    */
 
-    vUv = vec2(position.x/ width, position.y/ height);
-    vec2 depth_texture_coord = depth_texture_index / width;
-    vec4 color = texture2D(depth_texture, vUv);
-    float depth = (color.w + color.z * 16.0+ color.y * 16.0 * 16.0 + color.x * 16.0 * 16.0 * 16.0);
-    vDepth = depth/255.0;
-    vColor = color;
-    gl_PointSize = 1.5;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1);
+    vec2 depth_texture_coord = depth_texture_index / vec2(640, 480);
+    vec4 color= texture2D(depth_texture, depth_texture_coord);
+    float depth = color.w * 16.0 * 16.0 * 16.0 + color.z * 16.0 * 16.0 + color.y * 16.0 + color.x;//(color.w + color.z * 16.0+ color.y * 16.0 * 16.0 + color.x * 16.0 * 16.0 * 16.0);
+    
+    float depth_scaled = u_depth_scale * depth;
+    vDepth = depth_scaled;
+    vec4 pos = depth_deproject(depth_texture_index, depth_scaled);
+    gl_PointSize = 1.0;
+    gl_Position = projectionMatrix * modelViewMatrix * pos;
 }

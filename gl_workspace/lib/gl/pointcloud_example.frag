@@ -1,6 +1,5 @@
 precision mediump float;
 uniform float time;
-varying vec4 vColor;
 varying float vDepth;
 
 void main(){
