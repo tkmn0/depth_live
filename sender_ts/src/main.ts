@@ -46,10 +46,10 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
         this.webRTCClient.delegate = this;
 
         // signlaing
-        this.signalingGateway = new WebSocketClient();
+        // this.signalingGateway = new WebSocketClient();
         this.signling = new Signling(this.signalingGateway, this.webRTCClient);
         this.webRTCClient.signalingDelegate = this.signling;
-        this.signalingGateway.onSignalingMessage = this.signling.onSignalingMessage;
+        // this.signalingGateway.onSignalingMessage = this.signling.onSignalingMessage;
 
         // streamer
         this.streamMessage = new StreamMessage();
@@ -107,6 +107,16 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
             const upper_bit_arr = depth.slice(0, depth.length / 2);
             const lower_bit_arr = depth.slice(depth.length / 2, depth.length);
 
+            const testPixel = new Uint16Array(upper_bit_arr.length);
+
+            // TODO: testPixel　が正しいかをみる
+            for (let i = 0; i < upper_bit_arr.length; i += 1) {
+                testPixel[i] = (upper_bit_arr[i] << 8) + lower_bit_arr[i];
+            }
+            pointCloudScene.updateTexture(testPixel);
+
+            return;
+
             for (let i = 0; i < data.length; i += 4) {
                 data[i] = upper_bit_arr[i / 2];          // r
                 data[i + 1] = lower_bit_arr[i / 2];      // g
@@ -150,7 +160,7 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
 
             checkContext.putImageData(checkImage, 0, 0);
 
-            pointCloudScene.updateTexture(rawDepth);
+            // pointCloudScene.updateTexture(rawDepth);
         });
 
         let redCanvas = document.createElement('canvas');

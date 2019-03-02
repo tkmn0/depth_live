@@ -36,9 +36,11 @@ app.on('ready', () => {
       const uint8Array = new Uint8Array(depthFrame.length * 2);
       const redArray = new Uint8Array(depthFrame.length);
 
+      // uint16[xx, yy, zz]
+
       for (let i = 0; i < depthFrame.length; i += 1) {
 
-        uint8Array[i] = depthFrame[i] >>> 8;
+        uint8Array[i] = depthFrame[i] >> 8;
         uint8Array[uint8Array.length / 2 + i] = depthFrame[i] & 255;
 
         redArray[i] = depthFrame[i] % 256;

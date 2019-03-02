@@ -14,8 +14,6 @@ export class TemplateScene {
     private pointCloudMesh: THREE.Points;
 
     private buffer: Uint16Array;
-    private bufferView: ArrayBufferView;
-    // private buffer: Float32Array;
     private dataTexture: THREE.DataTexture;
 
     constructor() {
@@ -53,7 +51,6 @@ export class TemplateScene {
             rawDepth[i] = (upper[i] << 8) + lower[i];
         }
         this.buffer = new Uint16Array(rawDepth);
-        this.bufferView = new DataView(rawDepth.buffer);
         this.initialize();
         // this.addBox();
         this.setupDepthTexture();
