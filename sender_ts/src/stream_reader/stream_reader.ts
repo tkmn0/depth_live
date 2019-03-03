@@ -9,6 +9,8 @@ export class StreamReader {
     constructor() {
         this.image = document.createElement('img');
         this.canvas = document.createElement('canvas');
+        this.canvas.width = 480;
+        this.canvas.height = 320;
 
         setInterval(this.drawCanvas, 1000 / 30);
     }
@@ -49,7 +51,7 @@ export class StreamReader {
 
     private readDone = () => {
         if (this.chunks && this.chunks.length > 0) {
-            const blob = new Blob(this.chunks, { type: 'image/webp' });
+            const blob = new Blob(this.chunks, { type: 'image/webp', endings: 'transparent' });
             this.image.src = URL.createObjectURL(blob);
         }
     };

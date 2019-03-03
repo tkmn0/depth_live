@@ -43,10 +43,10 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
         this.webRTCClient.delegate = this;
 
         // signlaing
-        // this.signalingGateway = new WebSocketClient();
+        this.signalingGateway = new WebSocketClient();
         this.signling = new Signling(this.signalingGateway, this.webRTCClient);
         this.webRTCClient.signalingDelegate = this.signling;
-        // this.signalingGateway.onSignalingMessage = this.signling.onSignalingMessage;
+        this.signalingGateway.onSignalingMessage = this.signling.onSignalingMessage;
 
         // streamer
         this.streamMessage = new StreamMessage();
@@ -56,31 +56,135 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
             this.streamer.delegate = this;
         } else {
             this.streamReader = new StreamReader();
-            this.streamReader.getCanvas().width = 640;
-            this.streamReader.getCanvas().height = 480;
+            this.streamReader.getCanvas().width = 480;
+            this.streamReader.getCanvas().height = 320;
             document.body.appendChild(this.streamReader.getCanvas());
         }
 
         const pointCloudScene = new PointCloudScene();
+        if (this.sender) {
 
-        let testCanvas = document.createElement('canvas');
-        testCanvas.id = 'depth_rgba';
-        testCanvas.width = 480;
-        testCanvas.height = 320;
-        document.body.appendChild(testCanvas);
-        let context = testCanvas.getContext('2d');
-        const img = context.getImageData(0, 0, 480, 320);
-        const data = img.data;
-        this.streamer.setTargetCanvas(testCanvas);
+            let testCanvas = document.createElement('canvas');
+            testCanvas.id = 'depth_rgba';
+            testCanvas.width = 480;
+            testCanvas.height = 320;
+            document.body.appendChild(testCanvas);
+            let context = testCanvas.getContext('2d');
+            const img = context.getImageData(0, 0, 480, 320);
+            const data = img.data;
+            this.streamer.setTargetCanvas(testCanvas);
 
-        let checkCanvas = document.createElement('canvas');
-        checkCanvas.width = 640;
-        checkCanvas.height = 480;
-        checkCanvas.id = 'check';
-        document.body.appendChild(checkCanvas);
-        let checkContext = checkCanvas.getContext('2d');
-        let checkImage = checkContext.getImageData(0, 0, 640, 480);
-        let checkData = checkImage.data;
+            let checkCanvas = document.createElement('canvas');
+            checkCanvas.width = 640;
+            checkCanvas.height = 480;
+            checkCanvas.id = 'check';
+            document.body.appendChild(checkCanvas);
+            let checkContext = checkCanvas.getContext('2d');
+            let checkImage = checkContext.getImageData(0, 0, 640, 480);
+            let checkData = checkImage.data;
+
+            // depth 601440px
+            ipcRenderer.on('depth', (event, depth: Uint8Array) => {
+
+                const upper_bit_arr = depth.slice(0, depth.length / 2);
+                const lower_bit_arr = depth.slice(depth.length / 2, depth.length);
+
+                for (let i = 0; i < data.length; i += 4) {
+                    data[i] = upper_bit_arr[i / 2];          // r
+                    data[i + 1] = lower_bit_arr[i / 2];      // g
+                    data[i + 2] = upper_bit_arr[i / 2 + 1];  // b
+                    data[i + 3] = lower_bit_arr[i / 2 + 1];  // a
+                }
+
+                context.putImageData(img, 0, 0);
+
+                const pixel: Uint8Array = new Uint8Array(data.buffer);
+                const rawDepth: Uint16Array = new Uint16Array(depth.length / 2);
+                const upper = new Uint8Array(depth.length / 2);
+                const lower = new Uint8Array(depth.length / 2);
+
+                for (let i = 0; i < pixel.length; i += 4) {
+                    let r = pixel[i];
+                    let g = pixel[i + 1];
+                    let b = pixel[i + 2];
+                    let a = pixel[i + 3];
+
+                    upper[i / 2] = r;
+                    lower[i / 2] = g;
+                    upper[i / 2 + 1] = b;
+                    lower[i / 2 + 1] = a;
+
+                }
+
+                for (let i = 0; i < upper.length; i += 1) {
+                    rawDepth[i] = (upper[i] << 8) + lower[i];
+                }
+
+                let j = 0;
+                for (let i = 0; i < checkData.length; i += 4) {
+                    let red = rawDepth[j] % 256;
+                    checkData[i] = red;
+                    checkData[i + 1] = 0;
+                    checkData[i + 2] = 0;
+                    checkData[i + 3] = 255;
+                    j += 1;
+                }
+
+                checkContext.putImageData(checkImage, 0, 0);
+
+                pointCloudScene.updateTexture(rawDepth);
+            });
+
+            let colorCanvas = document.createElement('canvas');
+            colorCanvas.width = 640;
+            colorCanvas.height = 480;
+            colorCanvas.id = 'color';
+            document.body.appendChild(colorCanvas);
+            let colorContext = colorCanvas.getContext('2d');
+            let colorImg = colorContext.getImageData(0, 0, 640, 480);
+            let colorData = colorImg.data;
+
+            // 921600 307200
+            ipcRenderer.on('color', (ev, colorFrame: Uint8Array, width: number, height: number) => {
+                for (let i = 0, j = 0; i < colorData.length; i += 4, j += 3) {
+                    colorData[i] = colorFrame[j];
+                    colorData[i + 1] = colorFrame[j + 1];
+                    colorData[i + 2] = colorFrame[j + 2];
+                    colorData[i + 3] = 255;
+                }
+                colorContext.putImageData(colorImg, 0, 0);
+            });
+
+            pointCloudScene.setupColorCanvas(colorCanvas);
+        } else {
+            setInterval(() => {
+                let depthRGBA = this.streamReader.getCanvas();
+                let data = depthRGBA.getContext('2d').getImageData(0, 0, depthRGBA.width, depthRGBA.height).data;
+                const pixel: Uint8Array = new Uint8Array(data.buffer);
+                const rawDepth: Uint16Array = new Uint16Array(640 * 480);
+                const upper = new Uint8Array(640 * 480);
+                const lower = new Uint8Array(640 * 480);
+
+                for (let i = 0; i < pixel.length; i += 4) {
+                    let r = pixel[i];
+                    let g = pixel[i + 1];
+                    let b = pixel[i + 2];
+                    let a = pixel[i + 3];
+
+                    upper[i / 2] = r;
+                    lower[i / 2] = g;
+                    upper[i / 2 + 1] = b;
+                    lower[i / 2 + 1] = a;
+
+                }
+
+                for (let i = 0; i < upper.length; i += 1) {
+                    rawDepth[i] = (upper[i] << 8) + lower[i];
+                }
+
+                pointCloudScene.updateTexture(rawDepth);
+            }, 1000 / 30);
+        }
 
         // raw depth length: 307200 // 16bit
         // depth length: 614400 // upper 8bit + lower 8bit
@@ -96,80 +200,6 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
         // => これを復元する
         // => 全てのpixelに対し、r + g => upper 8bit (307200), b + a => lower 8bit (307200) を作成
         // => upper 8bit + lower 8bit で 307200 の Uint16Arrayを復元
-
-        // depth 601440px
-        ipcRenderer.on('depth', (event, depth: Uint8Array) => {
-
-            const upper_bit_arr = depth.slice(0, depth.length / 2);
-            const lower_bit_arr = depth.slice(depth.length / 2, depth.length);
-
-            for (let i = 0; i < data.length; i += 4) {
-                data[i] = upper_bit_arr[i / 2];          // r
-                data[i + 1] = lower_bit_arr[i / 2];      // g
-                data[i + 2] = upper_bit_arr[i / 2 + 1];  // b
-                data[i + 3] = lower_bit_arr[i / 2 + 1];  // a
-            }
-
-            context.putImageData(img, 0, 0);
-
-            const pixel: Uint8Array = new Uint8Array(data.buffer);
-            const rawDepth: Uint16Array = new Uint16Array(depth.length / 2);
-            const upper = new Uint8Array(depth.length / 2);
-            const lower = new Uint8Array(depth.length / 2);
-
-            for (let i = 0; i < pixel.length; i += 4) {
-                let r = pixel[i];
-                let g = pixel[i + 1];
-                let b = pixel[i + 2];
-                let a = pixel[i + 3];
-
-                upper[i / 2] = r;
-                lower[i / 2] = g;
-                upper[i / 2 + 1] = b;
-                lower[i / 2 + 1] = a;
-
-            }
-
-            for (let i = 0; i < upper.length; i += 1) {
-                rawDepth[i] = (upper[i] << 8) + lower[i];
-            }
-
-            let j = 0;
-            for (let i = 0; i < checkData.length; i += 4) {
-                let red = rawDepth[j] % 256;
-                checkData[i] = red;
-                checkData[i + 1] = 0;
-                checkData[i + 2] = 0;
-                checkData[i + 3] = 255;
-                j += 1;
-            }
-
-            checkContext.putImageData(checkImage, 0, 0);
-
-            pointCloudScene.updateTexture(rawDepth);
-        });
-
-        let colorCanvas = document.createElement('canvas');
-        colorCanvas.width = 640;
-        colorCanvas.height = 480;
-        colorCanvas.id = 'color';
-        document.body.appendChild(colorCanvas);
-        let colorContext = colorCanvas.getContext('2d');
-        let colorImg = colorContext.getImageData(0, 0, 640, 480);
-        let colorData = colorImg.data;
-
-        // 921600 307200
-        ipcRenderer.on('color', (ev, colorFrame: Uint8Array, width: number, height: number) => {
-            for (let i = 0, j = 0; i < colorData.length; i += 4, j += 3) {
-                colorData[i] = colorFrame[j];
-                colorData[i + 1] = colorFrame[j + 1];
-                colorData[i + 2] = colorFrame[j + 2];
-                colorData[i + 3] = 255;
-            }
-            colorContext.putImageData(colorImg, 0, 0);
-        });
-
-        pointCloudScene.setupColorCanvas(colorCanvas);
     }
 
     private setupEvents = () => {
