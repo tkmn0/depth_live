@@ -12,7 +12,7 @@ export class WebSocketClient implements ISignalingGateway {
     private tryToConnect = () => {
         if (this.socket) { return; }
         console.log('try to connect websocket');
-        this.socket = this.setupWebSocket('ws://localhost:8080');
+        this.socket = this.setupWebSocket('ws://192.168.1.22:8080');
     };
 
     private setupWebSocket = (url: string): WebSocket => {
