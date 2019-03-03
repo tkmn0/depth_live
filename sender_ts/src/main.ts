@@ -216,16 +216,15 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
     private disconnect = async () => { }
 
     readStart = (totalLength: number) => {
-        // this.webRTCClient.sendBuffer(this.streamMessage.start());
+        this.webRTCClient.sendBuffer(this.streamMessage.start());
     };
 
     readDone = () => {
-        // this.webRTCClient.sendBuffer(this.streamMessage.done());
+        this.webRTCClient.sendBuffer(this.streamMessage.done());
     };
 
     readBytes = (chunk: ArrayBuffer) => {
-        console.log("chunksize:", chunk.byteLength);
-        // this.webRTCClient.sendBuffer(chunk);
+        this.webRTCClient.sendBuffer(chunk);
     };
 
     onMessageFrom = (ch: RTCDataChannel, message: MessageEvent) => {
