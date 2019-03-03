@@ -5,13 +5,17 @@ uniform float time;
 uniform sampler2D depth_texture;
 varying float vDepth;
 varying vec4 vDepthColor;
-const vec2 u_depth_offset = vec2(315.847442626953, 241.684616088867);
-const vec2 u_depth_focal_length = vec2(643.142272949219, 643.142272949219);
-const float u_depth_scale = 0.00100000005;
-const mat4 u_depth_to_color = mat4(0.999988317489624, 0.000353455223375931, -0.00482225976884365, 0, -0.000426474376581609, 0.999885141849518, -0.0151494843885303, 0, 0.00481635145843029, 0.0151513637974858, 0.999873638153076, 0, 0.0150465695187449, -0.0000645012842142023, -0.00031321871210821, 1.0);
-const vec2 u_color_focal_length = vec2(617.459838867188, 617.65087890625);
-const vec2 u_color_offset = vec2(321.308288574219, 231.349639892578);
+const vec2 u_depth_offset = vec2(310.8018493652344, 234.960693359375);
+const vec2 u_depth_focal_length = vec2(640.1978759765625,640.1978759765625);
+const float u_depth_scale = 0.0010000000;
+const mat4 u_depth_to_color = mat4( 0.9999935626983643,     0.0032274967525154352,   0.0015595328295603395, 0,
+                                   -0.0032362034544348717, 0.9999790191650391,       0.005612988956272602, 0, 
+                                   -0.0015413842629641294,    -0.005617999937385321,     0.999983012676239, 0, 
+                                    0.014842060394585133, -0.00011889140296261758, -0.00009822657011682168, 1.0);
+const vec2 u_color_focal_length = vec2(615.8189697265625, 615.447509765625);
+const vec2 u_color_offset = vec2(302.6334228515625, 237.02969360351562);
 varying vec2 v_color_texture_coord;
+
 
 vec4 depth_deproject(vec2 index, float depth) {
    vec2 position2d = (index - u_depth_offset) / u_depth_focal_length;

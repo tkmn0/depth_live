@@ -24,10 +24,17 @@ app.on('ready', () => {
   let config = new rs2.Config();
   // config.enableStream(rs2.frame);
 
+
   try {
     pipeline.start();
+    let profile = pipeline.getActiveProfile();
+    let depthStream = profile.getStream(rs2.stream.stream_depth);
+    console.log(depthStream.cxxProfile.getVideoStreamIntrinsics());
+    let colorStream = profile.getStream(rs2.stream.stream_color);
+    console.log(colorStream.cxxProfile.getVideoStreamIntrinsics());
+    let depth_to_color = depthStream.getExtrinsicsTo(colorStream);
+    console.log(depth_to_color);
 
-    console.log('pipeline start');
     setInterval(() => {
       if (mainWindow != null) {
 
