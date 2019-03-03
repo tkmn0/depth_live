@@ -68,6 +68,8 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
 
         const pointCloudScene = new PointCloudScene();
 
+        this.setupCamera();
+
         let testCanvas = document.createElement('canvas');
         testCanvas.id = 'depth_rgba';
         testCanvas.width = 480;
@@ -108,14 +110,6 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
             const lower_bit_arr = depth.slice(depth.length / 2, depth.length);
 
             const testPixel = new Uint16Array(upper_bit_arr.length);
-
-            // TODO: testPixel　が正しいかをみる
-            for (let i = 0; i < upper_bit_arr.length; i += 1) {
-                testPixel[i] = (upper_bit_arr[i] << 8) + lower_bit_arr[i];
-            }
-            pointCloudScene.updateTexture(testPixel);
-
-            return;
 
             for (let i = 0; i < data.length; i += 4) {
                 data[i] = upper_bit_arr[i / 2];          // r
@@ -160,9 +154,10 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
 
             checkContext.putImageData(checkImage, 0, 0);
 
-            // pointCloudScene.updateTexture(rawDepth);
+            pointCloudScene.updateTexture(rawDepth);
         });
 
+        /*
         let redCanvas = document.createElement('canvas');
         redCanvas.width = 640;
         redCanvas.height = 480;
@@ -184,6 +179,29 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
 
             redContext.putImageData(redImg, 0, 0);
         });
+        */
+
+        let colorCanvas = document.createElement('canvas');
+        colorCanvas.width = 640;
+        colorCanvas.height = 480;
+        colorCanvas.id = 'color';
+        document.body.appendChild(colorCanvas);
+        let colorContext = colorCanvas.getContext('2d');
+        let colorImg = colorContext.getImageData(0, 0, 640, 480);
+        let colorData = colorImg.data;
+
+        // 921600 307200
+        ipcRenderer.on('color', (ev, colorFrame: Uint8Array, width: number, height: number) => {
+            for (let i = 0, j = 0; i < colorData.length; i += 4, j += 3) {
+                colorData[i] = colorFrame[j];
+                colorData[i + 1] = colorFrame[j + 1];
+                colorData[i + 2] = colorFrame[j + 2];
+                colorData[i + 3] = 255;
+            }
+            colorContext.putImageData(colorImg, 0, 0);
+        });
+
+        pointCloudScene.setupColorCanvas(colorCanvas);
     }
 
     private setupEvents = () => {
@@ -196,6 +214,34 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
             }
         };
     };
+
+    private setupCamera = async () => {
+        // let constraints = await this.getColorCamemra();
+        // let stream = await navigator.mediaDevices.getUserMedia(constraints);
+        // console.log(stream);
+    };
+
+    private getColorCamemra = async (): Promise<MediaStreamConstraints> => {
+        return new Promise(async (resolve) => {
+            try {
+                let devices = await navigator.mediaDevices.enumerateDevices();
+                for (let device of devices) {
+                    if (device.label.includes('RealSense') && device.label.includes('RGB')) {
+                        let constraints: MediaStreamConstraints = {
+                            video: {
+                                deviceId: device.deviceId,
+                                width: 640
+                            },
+                            audio: false
+                        }
+                        resolve(constraints);
+                    }
+                }
+            } catch (e) {
+                console.log(e);
+            }
+        });
+    }
 
     private saveDepthPng = () => {
         const canvas = document.getElementById('depth_rgba') as HTMLCanvasElement;

@@ -20,35 +20,41 @@ app.on('ready', () => {
     mainWindow = null;
   });
 
+
+  let config = new rs2.Config();
+  // config.enableStream(rs2.frame);
+
   try {
     pipeline.start();
+
+    console.log('pipeline start');
+    setInterval(() => {
+      if (mainWindow != null) {
+
+        const frameSet = pipeline.waitForFrames();
+
+        const depthFrame = frameSet.depthFrame.data; // Uint16Array
+        const colorFrame = frameSet.colorFrame.data;
+
+        const uint8Array = new Uint8Array(depthFrame.length * 2);
+        const redArray = new Uint8Array(depthFrame.length);
+
+        for (let i = 0; i < depthFrame.length; i += 1) {
+
+          uint8Array[i] = depthFrame[i] >> 8;
+          uint8Array[uint8Array.length / 2 + i] = depthFrame[i] & 255;
+
+          redArray[i] = depthFrame[i] % 256;
+        }
+
+        mainWindow.webContents.send('depth', uint8Array);
+        mainWindow.webContents.send('red', redArray);
+        mainWindow.webContents.send('color', colorFrame, frameSet.colorFrame.width, frameSet.colorFrame.height);
+      }
+    }, 1000 / 30);
   } catch (e) {
     console.log(e);
   }
 
-  console.log('pipeline start');
-
-  setInterval(() => {
-    if (mainWindow != null) {
-      const frameSet = pipeline.waitForFrames();
-      const depthFrame = frameSet.depthFrame.data; // Uint16Array
-
-      const uint8Array = new Uint8Array(depthFrame.length * 2);
-      const redArray = new Uint8Array(depthFrame.length);
-
-      // uint16[xx, yy, zz]
-
-      for (let i = 0; i < depthFrame.length; i += 1) {
-
-        uint8Array[i] = depthFrame[i] >> 8;
-        uint8Array[uint8Array.length / 2 + i] = depthFrame[i] & 255;
-
-        redArray[i] = depthFrame[i] % 256;
-      }
-
-      mainWindow.webContents.send('depth', uint8Array);
-      mainWindow.webContents.send('red', redArray);
-    }
-  }, 1000 / 30);
 
 });

@@ -8,13 +8,30 @@ export class PointCloudScene {
     private renderer: THREE.WebGLRenderer;
     private scene: THREE.Scene;
     private buffer: Uint16Array;
-    private dataTexture: THREE.DataTexture;
+    private depthTexture: THREE.DataTexture;
+    private colorTexture: THREE.CanvasTexture;
 
     constructor() {
         this.setupScene();
 
         this.addPointCloud();
     }
+
+    public setupColorCanvas = (colorCanvas: HTMLCanvasElement) => {
+        this.colorTexture = new THREE.CanvasTexture(colorCanvas);
+        this.colorTexture.needsUpdate = true;
+        this.colorTexture.minFilter = THREE.LinearFilter;
+        this.colorTexture.format = THREE.RGBAFormat;
+        const plane = new THREE.Mesh(
+            new THREE.PlaneGeometry(640, 480, 1, 1),
+            new THREE.MeshBasicMaterial({
+                map: this.colorTexture,
+                side: THREE.DoubleSide
+            })
+        );
+        this.scene.add(plane);
+        plane.position.z = -500;
+    };
 
     private addPointCloud = async () => {
 
@@ -58,7 +75,8 @@ export class PointCloudScene {
         let shaderMaterial = new THREE.ShaderMaterial({
             uniforms: {
                 "time": { value: 1.0 },
-                "depth_texture": { value: this.dataTexture },
+                "depth_texture": { value: this.depthTexture },
+                "color_texture": { value: this.colorTexture },
                 "width": { value: 640 },
                 "height": { value: 480 }
             },
@@ -70,7 +88,7 @@ export class PointCloudScene {
 
         let pointCloudMesh = new THREE.Points(pointCloudGeometry, shaderMaterial);
         this.scene.add(pointCloudMesh);
-        pointCloudMesh.rotateZ(Math.PI);
+        // pointCloudMesh.rotateZ(Math.PI);
     }
 
     private setupScene = () => {
@@ -99,97 +117,17 @@ export class PointCloudScene {
             this.buffer[i] = Math.random() * 65535
         }
 
-        this.dataTexture = new THREE.DataTexture(this.buffer, 640, 480, THREE.RGBAFormat);
-        this.dataTexture.type = THREE.UnsignedShort4444Type.valueOf();
-        this.dataTexture.minFilter = THREE.NearestFilter;
-        this.dataTexture.needsUpdate = true;
-
-        const plane = new THREE.Mesh(
-            new THREE.PlaneGeometry(640, 480, 1, 1),
-            new THREE.MeshBasicMaterial({
-                map: this.dataTexture,
-                side: THREE.FrontSide
-            })
-        );
-
-        // this.scene.add(plane);
-        plane.position.z = -500;
-        /*
-
-        let width = 640;
-        let height = 480;
-        var nearClipping = 850;
-        let farClipping = 4000;
-        let parameters = DepthCamera.getCameraCalibration(null, 'D415');
-        let depthIntrinsics = parameters.getDepthIntrinsics(width, height);
-        let depth_forcal_length = depthIntrinsics.focalLength;
-        let depth_offset = depthIntrinsics.offset;
-        let depth_scale = parameters.depthScale;
-        let depth_distortion_model = parameters.depthDistortionModel;
-        let depth_distortion_coeffs = parameters.depthDistortioncoeffs;
-        let color_focal_length = parameters.colorFocalLength;
-        let color_offset = parameters.colorOffset;
-        let color_distortion_model = parameters.colorDistortionModel;
-        let color_distortion_coeffs = parameters.colorDistortioncoeffs;
-        let depth_to_color = parameters.depthToColor;
-
-        console.log(depth_forcal_length);
-        console.log(depth_offset);
-        console.log(depth_distortion_model);
-        console.log(depth_distortion_coeffs);
-        console.log(color_focal_length);
-        console.log(color_offset);
-        console.log(color_distortion_model);
-        console.log(color_distortion_coeffs);
-        console.log(depth_to_color);
-        console.log('depth_scale', depth_scale);
-
-        var ParamsShaderMaterial = {
-            uniforms: {
-                "u_depth_to_color": { value: depth_to_color },
-                "u_depth_scale": { value: depth_scale },
-                "u_depth_offset": { value: depth_offset },
-                "u_depth_focal_length": { value: depth_forcal_length },
-                "u_depth_distortion_model": { value: depth_distortion_model },
-                "u_depth_distortion_coeffs": { value: depth_distortion_coeffs },
-                "u_color_offset": { vlue: color_offset },
-                "u_color_focal_length": { value: color_focal_length },
-                "u_color_distortion_model": { value: color_distortion_model },
-                "u_color_distortion_coeffs": { value: color_distortion_coeffs },
-                "u_depth_texture": { value: this.dataTexture },
-                "u_depth_texture_size": { value: [width, height] },
-                "u_color_texture_size": { value: [width, height] },
-                "nearClipping": { value: nearClipping },
-                "farClipping": { value: farClipping }
-            },
-            vertexShader: document.getElementById('vertexshader').textContent,
-            fragmentShader: document.getElementById('fragmentshader').textContent,
-            side: THREE.DoubleSide,
-            transparent: true,
-            blending: THREE.AdditiveBlending,
-            depthTest: false,
-            depthWrite: false,
-        };
-
-        let glGeometry = new THREE.BufferGeometry();
-
-        var vertices = new Float32Array(width * height * 3);
-        for (var i = 0, j = 0, l = vertices.length; i < l; i += 3, j++) {
-            vertices[i] = j % width;
-            vertices[i + 1] = Math.floor(j / width);
-        }
-        glGeometry.addAttribute('position', new THREE.BufferAttribute(vertices, 3));
-
-        let glMaterial = new THREE.ShaderMaterial(ParamsShaderMaterial);
-
-        let glMesh = new THREE.Points(glGeometry, glMaterial);
-        glMesh.scale.set(200.0, 200.0, 200.0);
-        this.scene.add(glMesh);
-        */
+        this.depthTexture = new THREE.DataTexture(this.buffer, 640, 480, THREE.RGBAFormat);
+        this.depthTexture.type = THREE.UnsignedShort4444Type.valueOf();
+        this.depthTexture.minFilter = THREE.NearestFilter;
+        this.depthTexture.needsUpdate = true;
 
         const tick = (): void => {
             requestAnimationFrame(tick);
 
+            if (this.colorTexture) {
+                this.colorTexture.needsUpdate = true;
+            }
             controls.update();
             camera.updateProjectionMatrix();
             this.renderer.render(this.scene, camera);
@@ -199,6 +137,6 @@ export class PointCloudScene {
 
     updateTexture = (data: Uint16Array) => {
         this.buffer.set(data);
-        this.dataTexture.needsUpdate = true;
+        this.depthTexture.needsUpdate = true;
     };
 }

@@ -24,6 +24,7 @@ export class DepthCamera {
             !navigator.mediaDevices.getUserMedia) {
             throw new Error("Your browser doesn't support the required mediaDevices APIs.");
         }
+        console.log("--- get depth stream ---");
 
         /*
         // Use videoKind if it is supported. At the moment it is experimental; to
@@ -57,34 +58,42 @@ export class DepthCamera {
                 width: { ideal: 640 },
 
                 // SR300 depth camera enables capture at 110 frames per second.
-                frameRate: { ideal: 110 },
+                frameRate: { ideal: 30 },
             }
         }
 
-        let stream = await navigator.mediaDevices.getUserMedia(constraints);
-        let track = stream.getVideoTracks()[0];
-        if (track.label.indexOf("RealSense") == -1) {
-            throw new Error(chromeVersion() < 58 ?
-                "Your browser version is too old. Get Chrome version 58 or later." :
-                "No RealSense camera connected.");
-        }
+        try {
 
-        if (track.getSettings && track.getSettings().frameRate > 60) {
-            // After Chrome 59, returned track is scaled to 628 and frameCount 110.
-            // We got the deviceId, so we the deviceId to select the stream with
-            // default resolution and frameRate.
-            track.stop();
+            let stream = await navigator.mediaDevices.getUserMedia(constraints);
+            let track = stream.getVideoTracks()[0];
+            if (track.label.indexOf("RealSense") == -1) {
+                throw new Error(chromeVersion() < 58 ?
+                    "Your browser version is too old. Get Chrome version 58 or later." :
+                    "No RealSense camera connected.");
+            }
 
-            const constraints = {
-                audio: false,
-                video: {
-                    deviceId: { exact: track.getSettings().deviceId },
-                    frameRate: { exact: 60 }
+
+            if (track.getSettings && track.getSettings().frameRate > 60) {
+                // After Chrome 59, returned track is scaled to 628 and frameCount 110.
+                // We got the deviceId, so we the deviceId to select the stream with
+                // default resolution and frameRate.
+                track.stop();
+
+                const constraints = {
+                    audio: false,
+                    video: {
+                        deviceId: { exact: track.getSettings().deviceId },
+                        frameRate: { exact: 60 }
+                    }
                 }
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
             }
-            stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+            return stream;
+        } catch (e) {
+            console.log("error:", e);
         }
-        return stream;
+
     }
 
     // Call the method after getting depth_stream using getDepthStream.
@@ -102,6 +111,7 @@ export class DepthCamera {
         // Chrome, starting with version 59, implements getSettings() API.
         if (depth.getSettings) {
             depth_device_id = depth.getSettings().deviceId;
+            console.log(depth_device_id);
         } /*else if (idealWidth) {
             console.warn(`Not able to set ideal width for color video as
         MediaStreamTrack getSettings() API is not available. Try
