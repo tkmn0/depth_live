@@ -8,11 +8,8 @@ import { StreamerDelegate } from "./streamer/streamer_delegate";
 import { StreamReader } from "./stream_reader/stream_reader";
 import { StreamMessage } from "./models/stream_message";
 import { WebRTCClientDelegate } from "./webrtc_client/webrtc_client_delegate";
-import { DepthCamera } from "./depth_camera/realsense/depth_camera";
 import { ipcRenderer } from "electron";
 import { PointCloudScene } from "./three/point_cloud_scene";
-const fs = require('fs');
-const dataUriToBuffer = require('data-uri-to-buffer');
 
 
 class Main implements StreamerDelegate, WebRTCClientDelegate {
@@ -55,10 +52,8 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
         this.streamMessage = new StreamMessage();
 
         if (this.sender) {
-            // this.setupDepth();
-            // this.streamer = new Streamer();
-            // this.streamer.startSession({ video: true, audio: false, data: false });
-            // this.streamer.delegate = this;
+            this.streamer = new Streamer();
+            this.streamer.delegate = this;
         } else {
             this.streamReader = new StreamReader();
             this.streamReader.getCanvas().width = 640;
@@ -68,8 +63,6 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
 
         const pointCloudScene = new PointCloudScene();
 
-        this.setupCamera();
-
         let testCanvas = document.createElement('canvas');
         testCanvas.id = 'depth_rgba';
         testCanvas.width = 480;
@@ -78,6 +71,7 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
         let context = testCanvas.getContext('2d');
         const img = context.getImageData(0, 0, 480, 320);
         const data = img.data;
+        this.streamer.setTargetCanvas(testCanvas);
 
         let checkCanvas = document.createElement('canvas');
         checkCanvas.width = 640;
@@ -108,8 +102,6 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
 
             const upper_bit_arr = depth.slice(0, depth.length / 2);
             const lower_bit_arr = depth.slice(depth.length / 2, depth.length);
-
-            const testPixel = new Uint16Array(upper_bit_arr.length);
 
             for (let i = 0; i < data.length; i += 4) {
                 data[i] = upper_bit_arr[i / 2];          // r
@@ -157,30 +149,6 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
             pointCloudScene.updateTexture(rawDepth);
         });
 
-        /*
-        let redCanvas = document.createElement('canvas');
-        redCanvas.width = 640;
-        redCanvas.height = 480;
-        redCanvas.id = 'goal';
-        document.body.appendChild(redCanvas);
-        let redContext = redCanvas.getContext('2d');
-        let redImg = redContext.getImageData(0, 0, 640, 480);
-        let redData = redImg.data;
-
-        ipcRenderer.on('red', (ev, depth: Uint8Array) => {
-            let j = 0;
-            for (let i = 0; i < redData.length; i += 4) {
-                redData[i] = depth[j];
-                redData[i + 1] = 0;
-                redData[i + 2] = 0;
-                redData[i + 3] = 255;
-                j += 1;
-            }
-
-            redContext.putImageData(redImg, 0, 0);
-        });
-        */
-
         let colorCanvas = document.createElement('canvas');
         colorCanvas.width = 640;
         colorCanvas.height = 480;
@@ -207,51 +175,6 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
     private setupEvents = () => {
         document.getElementById('webrtcConnectButton').onclick = this.connect;
         document.getElementById('webrtcDisconnectButton').onclick = this.disconnect;
-
-        window.document.onkeydown = (event) => {
-            if (event.key == 's') {
-                this.saveDepthPng();
-            }
-        };
-    };
-
-    private setupCamera = async () => {
-        // let constraints = await this.getColorCamemra();
-        // let stream = await navigator.mediaDevices.getUserMedia(constraints);
-        // console.log(stream);
-    };
-
-    private getColorCamemra = async (): Promise<MediaStreamConstraints> => {
-        return new Promise(async (resolve) => {
-            try {
-                let devices = await navigator.mediaDevices.enumerateDevices();
-                for (let device of devices) {
-                    if (device.label.includes('RealSense') && device.label.includes('RGB')) {
-                        let constraints: MediaStreamConstraints = {
-                            video: {
-                                deviceId: device.deviceId,
-                                width: 640
-                            },
-                            audio: false
-                        }
-                        resolve(constraints);
-                    }
-                }
-            } catch (e) {
-                console.log(e);
-            }
-        });
-    }
-
-    private saveDepthPng = () => {
-        const canvas = document.getElementById('depth_rgba') as HTMLCanvasElement;
-        const dataUrl = canvas.toDataURL('image/png', 1.0);
-        const decode = dataUriToBuffer(dataUrl);
-        fs.writeFile('./test.png', decode, (err) => {
-            if (err) {
-                console.log(err);
-            }
-        });
     };
 
     private connect = async () => {
@@ -263,15 +186,16 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
     private disconnect = async () => { }
 
     readStart = (totalLength: number) => {
-        this.webRTCClient.sendBuffer(this.streamMessage.start());
+        // this.webRTCClient.sendBuffer(this.streamMessage.start());
     };
 
     readDone = () => {
-        this.webRTCClient.sendBuffer(this.streamMessage.done());
+        // this.webRTCClient.sendBuffer(this.streamMessage.done());
     };
 
     readBytes = (chunk: ArrayBuffer) => {
-        this.webRTCClient.sendBuffer(chunk);
+        console.log("chunksize:", chunk.byteLength);
+        // this.webRTCClient.sendBuffer(chunk);
     };
 
     onMessageFrom = (ch: RTCDataChannel, message: MessageEvent) => {

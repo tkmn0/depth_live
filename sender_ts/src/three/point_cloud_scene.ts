@@ -88,7 +88,6 @@ export class PointCloudScene {
 
         let pointCloudMesh = new THREE.Points(pointCloudGeometry, shaderMaterial);
         this.scene.add(pointCloudMesh);
-        // pointCloudMesh.rotateZ(Math.PI);
     }
 
     private setupScene = () => {

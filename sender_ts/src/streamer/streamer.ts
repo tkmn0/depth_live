@@ -1,42 +1,29 @@
 import { Channels } from "../models/channels";
-import { setInterval } from "timers";
 import { StreamerDelegate } from "./streamer_delegate";
 
 export class Streamer {
 
-    private videoElement: HTMLVideoElement
-    private colorCanvas: HTMLCanvasElement
+    private targetCanvas: HTMLCanvasElement
     private currentBlob: Blob
     private fileReader = new FileReader();
     delegate: StreamerDelegate
     private isReading = false;
 
     constructor() {
-        this.videoElement = document.createElement('video');
-        this.videoElement.id = 'colorVideo';
-        this.colorCanvas = document.createElement('canvas');
-        this.colorCanvas.id = 'colorCanvas';
-        document.body.appendChild(this.colorCanvas);
 
-        setInterval(() => { this.drawToCanvas(this.videoElement, this.colorCanvas) }, 1000 / 30);
-        setInterval(() => { this.colorCanvas.toBlob((blob) => { this.currentBlob = blob }, 'image/webp', 1.0) }, 1000 / 30);
-        setInterval(() => { this.readBlob(this.currentBlob) }, 1000 / 30);
+        setInterval(() => {
+            if (this.targetCanvas) {
+                this.targetCanvas.toBlob((blob) => { this.currentBlob = blob }, 'image/webp', 1.0);
+            }
+        }, 1000 / 30);
+
+        setInterval(() => {
+            this.readBlob(this.currentBlob)
+        }, 1000 / 30);
     }
 
-    public startSession = async (channels: Channels) => {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: channels.video, audio: channels.audio });
-            this.videoElement.srcObject = stream;
-            await this.videoElement.play();
-        } catch (err) {
-            console.log(err);
-        }
-    };
-
-    private drawToCanvas = (video: HTMLVideoElement, canvas: HTMLCanvasElement) => {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+    public setTargetCanvas = (canvas: HTMLCanvasElement) => {
+        this.targetCanvas = canvas;
     };
 
     private readBlob = (blob: Blob) => {
