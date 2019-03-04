@@ -10,8 +10,6 @@ import { StreamMessage } from "./models/stream_message";
 import { WebRTCClientDelegate } from "./webrtc_client/webrtc_client_delegate";
 import { ipcRenderer } from "electron";
 import { PointCloudScene } from "./three/point_cloud_scene";
-import { read } from "fs";
-
 
 class Main implements StreamerDelegate, WebRTCClientDelegate {
 
@@ -23,6 +21,7 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
     streamReader: StreamReader
     streamMessage: StreamMessage
     readBuffer: Float32Array
+    pointCloudScene: PointCloudScene
 
     constructor() {
         let urlParams = new URLSearchParams(location.search);
@@ -49,7 +48,7 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
         this.webRTCClient.signalingDelegate = this.signling;
         this.signalingGateway.onSignalingMessage = this.signling.onSignalingMessage;
 
-        const pointCloudScene = new PointCloudScene();
+        this.pointCloudScene = new PointCloudScene();
         // streamer
         this.streamMessage = new StreamMessage();
 
@@ -86,17 +85,10 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
                     rawDepth[i] = (upper[i] << 8) + lower[i];
                 }
 
-                pointCloudScene.updateTexture(rawDepth);
+                this.pointCloudScene.updateTexture(rawDepth);
 
             };
         }
-
-        /*
-        this.streamReader = new StreamReader();
-        this.streamReader.onRawDepthUpdated = (pixels: Uint8Array) => {
-            console.log('pixels length:', pixels.length);
-        };
-        */
 
         if (this.sender) {
 
@@ -127,9 +119,12 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
             let colorImg = colorContext.getImageData(0, 0, 640, 480);
             let colorData = colorImg.data;
 
+            // streamser
             this.streamer.setTargetCanvas(testCanvas);
-            // depth 601440px
+            // RTC
+            this.webRTCClient.setVideoStream((colorCanvas as any).captureStream(20));
 
+            // depth 601440px
             ipcRenderer.on('depth', (event, depth: Uint8Array) => {
 
                 const upper_bit_arr = depth.slice(0, depth.length / 2);
@@ -192,7 +187,7 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
 
                 checkContext.putImageData(checkImage, 0, 0);
 
-                pointCloudScene.updateTexture(rawDepth);
+                this.pointCloudScene.updateTexture(rawDepth);
 
             });
 
@@ -207,8 +202,7 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
                 colorContext.putImageData(colorImg, 0, 0);
             });
 
-            pointCloudScene.setupColorCanvas(colorCanvas);
-
+            this.pointCloudScene.setupColorCanvas(colorCanvas);
         }
 
 
@@ -241,28 +235,44 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
 
     private disconnect = async () => { }
 
+    // Streamer Delegate
     readStart = (totalLength: number) => {
         this.webRTCClient.sendBuffer(this.streamMessage.start());
-
-        // this.streamReader.read(this.streamMessage.start());
     };
 
     readDone = () => {
         this.webRTCClient.sendBuffer(this.streamMessage.done());
-
-        // this.streamReader.read(this.streamMessage.done());
     };
 
     readBytes = (chunk: ArrayBuffer) => {
         this.webRTCClient.sendBuffer(chunk);
-
-        // this.streamReader.read(chunk);
     };
 
+    // WebRTCClient Delegate
     onMessageFrom = (ch: RTCDataChannel, message: MessageEvent) => {
         let buffer = message.data as ArrayBuffer
         this.streamReader.read(buffer);
     };
+
+    onAddStream = (stream: MediaStream) => {
+        if (stream.getTracks()[0].kind == "video") {
+            let video = document.createElement("video");
+            video.id = "remote_color";
+            document.body.appendChild(video);
+
+            if (!this.sender) {
+                video.onplay = event => {
+                    this.pointCloudScene.setupColorCanvas(video);
+                };
+            }
+            this.playVideo(video, stream);
+        }
+    };
+
+    private playVideo(element, stream: MediaStream) {
+        element.srcObject = stream;
+        element.play();
+    }
 }
 
 let main: Main

@@ -4,7 +4,6 @@ attribute vec2 depth_texture_index;
 uniform float time;
 uniform sampler2D depth_texture;
 varying float vDepth;
-varying vec4 vDepthColor;
 const vec2 u_depth_offset = vec2(310.8018493652344, 234.960693359375);
 const vec2 u_depth_focal_length = vec2(640.1978759765625,640.1978759765625);
 const float u_depth_scale = 0.0010000000;
@@ -35,7 +34,6 @@ void main(){
     
     float depth_scaled = u_depth_scale * depth * 10.0;
     vDepth = depth_scaled;
-    vDepthColor = color;
     
     vec4 pos = depth_deproject(depth_texture_index, depth_scaled);
     pos.y *= -1.0;

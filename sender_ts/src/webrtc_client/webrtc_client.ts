@@ -10,10 +10,14 @@ export class WebRTCClient {
 
     delegate: WebRTCClientDelegate;
     signalingDelegate: WebRTCSignalingDelegate;
+    private localVideoStream: MediaStream;
+
+    public setVideoStream(stream: MediaStream) {
+        this.localVideoStream = stream;
+    }
 
     constructor(channels: Channels) {
         this.channels = channels;
-        this.peerConnection = this.prepareNewConnection();
     }
 
     private setupDataChannel = (peer: RTCPeerConnection): RTCDataChannel => {
@@ -62,7 +66,18 @@ export class WebRTCClient {
             };
         };
         peer.onnegotiationneeded = () => { };
-        peer.ontrack = (event) => { };
+
+        peer.ontrack = (event) => {
+            if (this.delegate && this.delegate.onAddStream) {
+                this.delegate.onAddStream(event.streams[0]);
+            }
+        };
+
+        if (this.localVideoStream) {
+            this.localVideoStream.getTracks().forEach(track => {
+                peer.addTrack(track);
+            });
+        }
 
         return peer;
     }
@@ -97,6 +112,9 @@ export class WebRTCClient {
     };
 
     public connect = () => {
+        if (!this.peerConnection) {
+            this.peerConnection = this.prepareNewConnection();
+        }
         if (!this.dataChannel && this.channels.data) {
             // set up data
             this.dataChannel = this.setupDataChannel(this.peerConnection);
@@ -107,6 +125,9 @@ export class WebRTCClient {
 
     public setOfferAsync = async (sdp: RTCSessionDescription, callback: (answer: RTCSessionDescription) => void) => {
         try {
+            if (!this.peerConnection) {
+                this.peerConnection = this.prepareNewConnection();
+            }
             if (this.peerConnection.signalingState == 'have-remote-offer') {
                 console.log('peer connection is still in progress to set remote offer');
             }

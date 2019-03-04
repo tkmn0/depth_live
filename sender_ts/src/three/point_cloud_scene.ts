@@ -13,15 +13,14 @@ export class PointCloudScene {
 
     constructor() {
         this.setupScene();
-
-        this.addPointCloud();
     }
 
-    public setupColorCanvas = (colorCanvas: HTMLCanvasElement) => {
+    public setupColorCanvas = (colorCanvas: HTMLCanvasElement | HTMLVideoElement) => {
         this.colorTexture = new THREE.CanvasTexture(colorCanvas);
         this.colorTexture.needsUpdate = true;
         this.colorTexture.minFilter = THREE.LinearFilter;
-        this.colorTexture.format = THREE.RGBAFormat;
+        this.colorTexture.magFilter = THREE.LinearFilter;
+        this.colorTexture.format = THREE.RGBFormat;
 
         const plane = new THREE.Mesh(
             new THREE.PlaneGeometry(640, 480, 1, 1),
@@ -30,8 +29,10 @@ export class PointCloudScene {
                 side: THREE.DoubleSide
             })
         );
-        // this.scene.add(plane);
+        this.scene.add(plane);
         plane.position.z = -500;
+
+        this.addPointCloud();
     };
 
     private addPointCloud = async () => {
