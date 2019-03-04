@@ -10,6 +10,7 @@ import { StreamMessage } from "./models/stream_message";
 import { WebRTCClientDelegate } from "./webrtc_client/webrtc_client_delegate";
 import { ipcRenderer } from "electron";
 import { PointCloudScene } from "./three/point_cloud_scene";
+import { read } from "fs";
 
 
 class Main implements StreamerDelegate, WebRTCClientDelegate {
@@ -48,6 +49,7 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
         this.webRTCClient.signalingDelegate = this.signling;
         this.signalingGateway.onSignalingMessage = this.signling.onSignalingMessage;
 
+        const pointCloudScene = new PointCloudScene();
         // streamer
         this.streamMessage = new StreamMessage();
 
@@ -56,23 +58,56 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
             this.streamer.delegate = this;
         } else {
             this.streamReader = new StreamReader();
-            this.streamReader.getCanvas().width = 480;
-            this.streamReader.getCanvas().height = 320;
-            document.body.appendChild(this.streamReader.getCanvas());
+
+            this.streamReader.onRawDepthUpdated = (pixel: Uint8Array) => {
+
+                const rawDepth: Uint16Array = new Uint16Array(640 * 480);
+                const upper = new Uint8Array(640 * 480);
+                const lower = new Uint8Array(640 * 480);
+
+                for (let i = 0, d = 0; i < pixel.length; i += 8, d += 3) {
+                    let r_1 = pixel[i];
+                    let g_1 = pixel[i + 1];
+                    let b_1 = pixel[i + 2];
+                    let a_1 = pixel[i + 3];
+                    let r_2 = pixel[i + 4];
+                    let g_2 = pixel[i + 5];
+                    let b_2 = pixel[i + 6];
+                    let a_2 = pixel[i + 7];
+                    upper[d] = r_1;
+                    lower[d] = g_1;
+                    upper[d + 1] = b_1;
+                    lower[d + 1] = r_2;
+                    upper[d + 2] = g_2;
+                    lower[d + 2] = b_2;
+                }
+
+                for (let i = 0; i < upper.length; i += 1) {
+                    rawDepth[i] = (upper[i] << 8) + lower[i];
+                }
+
+                pointCloudScene.updateTexture(rawDepth);
+
+            };
         }
 
-        const pointCloudScene = new PointCloudScene();
+        /*
+        this.streamReader = new StreamReader();
+        this.streamReader.onRawDepthUpdated = (pixels: Uint8Array) => {
+            console.log('pixels length:', pixels.length);
+        };
+        */
+
         if (this.sender) {
 
             let testCanvas = document.createElement('canvas');
             testCanvas.id = 'depth_rgba';
-            testCanvas.width = 480;
-            testCanvas.height = 320;
+            testCanvas.width = 512;
+            testCanvas.height = 400//320;
             document.body.appendChild(testCanvas);
             let context = testCanvas.getContext('2d');
-            const img = context.getImageData(0, 0, 480, 320);
+            const img = context.getImageData(0, 0, testCanvas.width, testCanvas.height);
             const data = img.data;
-            this.streamer.setTargetCanvas(testCanvas);
 
             let checkCanvas = document.createElement('canvas');
             checkCanvas.width = 640;
@@ -83,37 +118,62 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
             let checkImage = checkContext.getImageData(0, 0, 640, 480);
             let checkData = checkImage.data;
 
+            let colorCanvas = document.createElement('canvas');
+            colorCanvas.width = 640;
+            colorCanvas.height = 480;
+            colorCanvas.id = 'color';
+            document.body.appendChild(colorCanvas);
+            let colorContext = colorCanvas.getContext('2d');
+            let colorImg = colorContext.getImageData(0, 0, 640, 480);
+            let colorData = colorImg.data;
+
+            this.streamer.setTargetCanvas(testCanvas);
             // depth 601440px
+
             ipcRenderer.on('depth', (event, depth: Uint8Array) => {
 
                 const upper_bit_arr = depth.slice(0, depth.length / 2);
                 const lower_bit_arr = depth.slice(depth.length / 2, depth.length);
 
-                for (let i = 0; i < data.length; i += 4) {
-                    data[i] = upper_bit_arr[i / 2];          // r
-                    data[i + 1] = lower_bit_arr[i / 2];      // g
-                    data[i + 2] = upper_bit_arr[i / 2 + 1];  // b
-                    data[i + 3] = lower_bit_arr[i / 2 + 1];  // a
+                for (let i = 0, d = 0; i < data.length; i += 8, d += 3) {
+                    // 2px (8, 8, 8, - ) x 2 bit 48 bit
+                    // depth 3px 48bit 
+                    // 640 x 480 x 2/3 におさまる
+                    data[i] = upper_bit_arr[d];         // 0 // 3 // 6
+                    data[i + 1] = lower_bit_arr[d];     // 0 // 3 // 6 
+                    data[i + 2] = upper_bit_arr[d + 1]; // 1 // 4 // 7
+                    data[i + 3] = 255;
+                    data[i + 4] = lower_bit_arr[d + 1]; // 1 // 4 // 7
+                    data[i + 5] = upper_bit_arr[d + 2]; // 2 // 5 // 8
+                    data[i + 6] = lower_bit_arr[d + 2]; // 2 // 5 // 8
+                    data[i + 7] = 255;
                 }
 
+                context.clearRect(0, 0, testCanvas.width, testCanvas.height);
                 context.putImageData(img, 0, 0);
 
-                const pixel: Uint8Array = new Uint8Array(data.buffer);
+                let getData = context.getImageData(0, 0, testCanvas.width, testCanvas.height).data;
+                const pixel: Uint8Array = new Uint8Array(getData.buffer)//data.buffer);
+
                 const rawDepth: Uint16Array = new Uint16Array(depth.length / 2);
                 const upper = new Uint8Array(depth.length / 2);
                 const lower = new Uint8Array(depth.length / 2);
 
-                for (let i = 0; i < pixel.length; i += 4) {
-                    let r = pixel[i];
-                    let g = pixel[i + 1];
-                    let b = pixel[i + 2];
-                    let a = pixel[i + 3];
-
-                    upper[i / 2] = r;
-                    lower[i / 2] = g;
-                    upper[i / 2 + 1] = b;
-                    lower[i / 2 + 1] = a;
-
+                for (let i = 0, d = 0; i < pixel.length; i += 8, d += 3) {
+                    let r_1 = pixel[i];
+                    let g_1 = pixel[i + 1];
+                    let b_1 = pixel[i + 2];
+                    let a_1 = pixel[i + 3];
+                    let r_2 = pixel[i + 4];
+                    let g_2 = pixel[i + 5];
+                    let b_2 = pixel[i + 6];
+                    let a_2 = pixel[i + 7];
+                    upper[d] = r_1;
+                    lower[d] = g_1;
+                    upper[d + 1] = b_1;
+                    lower[d + 1] = r_2;
+                    upper[d + 2] = g_2;
+                    lower[d + 2] = b_2;
                 }
 
                 for (let i = 0; i < upper.length; i += 1) {
@@ -133,16 +193,8 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
                 checkContext.putImageData(checkImage, 0, 0);
 
                 pointCloudScene.updateTexture(rawDepth);
-            });
 
-            let colorCanvas = document.createElement('canvas');
-            colorCanvas.width = 640;
-            colorCanvas.height = 480;
-            colorCanvas.id = 'color';
-            document.body.appendChild(colorCanvas);
-            let colorContext = colorCanvas.getContext('2d');
-            let colorImg = colorContext.getImageData(0, 0, 640, 480);
-            let colorData = colorImg.data;
+            });
 
             // 921600 307200
             ipcRenderer.on('color', (ev, colorFrame: Uint8Array, width: number, height: number) => {
@@ -156,35 +208,9 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
             });
 
             pointCloudScene.setupColorCanvas(colorCanvas);
-        } else {
-            setInterval(() => {
-                let depthRGBA = this.streamReader.getCanvas();
-                let data = depthRGBA.getContext('2d').getImageData(0, 0, depthRGBA.width, depthRGBA.height).data;
-                const pixel: Uint8Array = new Uint8Array(data.buffer);
-                const rawDepth: Uint16Array = new Uint16Array(640 * 480);
-                const upper = new Uint8Array(640 * 480);
-                const lower = new Uint8Array(640 * 480);
 
-                for (let i = 0; i < pixel.length; i += 4) {
-                    let r = pixel[i];
-                    let g = pixel[i + 1];
-                    let b = pixel[i + 2];
-                    let a = pixel[i + 3];
-
-                    upper[i / 2] = r;
-                    lower[i / 2] = g;
-                    upper[i / 2 + 1] = b;
-                    lower[i / 2 + 1] = a;
-
-                }
-
-                for (let i = 0; i < upper.length; i += 1) {
-                    rawDepth[i] = (upper[i] << 8) + lower[i];
-                }
-
-                pointCloudScene.updateTexture(rawDepth);
-            }, 1000 / 30);
         }
+
 
         // raw depth length: 307200 // 16bit
         // depth length: 614400 // upper 8bit + lower 8bit
@@ -217,14 +243,20 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
 
     readStart = (totalLength: number) => {
         this.webRTCClient.sendBuffer(this.streamMessage.start());
+
+        // this.streamReader.read(this.streamMessage.start());
     };
 
     readDone = () => {
         this.webRTCClient.sendBuffer(this.streamMessage.done());
+
+        // this.streamReader.read(this.streamMessage.done());
     };
 
     readBytes = (chunk: ArrayBuffer) => {
         this.webRTCClient.sendBuffer(chunk);
+
+        // this.streamReader.read(chunk);
     };
 
     onMessageFrom = (ch: RTCDataChannel, message: MessageEvent) => {

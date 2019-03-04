@@ -8,12 +8,17 @@ export class Streamer {
     private fileReader = new FileReader();
     delegate: StreamerDelegate
     private isReading = false;
+    private isEncodeing = false;
 
     constructor() {
 
         setInterval(() => {
-            if (this.targetCanvas) {
-                this.targetCanvas.toBlob((blob) => { this.currentBlob = blob }, 'image/webp', 1.0);
+            if (this.targetCanvas && !this.isEncodeing) {
+                this.isEncodeing = true;
+                this.targetCanvas.toBlob((blob) => {
+                    this.currentBlob = blob
+                    this.isEncodeing = false;
+                }, 'image/webp', 1);
             }
         }, 1000 / 30);
 
