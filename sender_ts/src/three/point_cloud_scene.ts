@@ -22,6 +22,7 @@ export class PointCloudScene {
         this.colorTexture.magFilter = THREE.LinearFilter;
         this.colorTexture.format = THREE.RGBFormat;
 
+        /*
         const plane = new THREE.Mesh(
             new THREE.PlaneGeometry(640, 480, 1, 1),
             new THREE.MeshBasicMaterial({
@@ -31,7 +32,7 @@ export class PointCloudScene {
         );
         this.scene.add(plane);
         plane.position.z = -500;
-
+        */
         this.addPointCloud();
     };
 
@@ -123,6 +124,7 @@ export class PointCloudScene {
         this.depthTexture.minFilter = THREE.NearestFilter;
         this.depthTexture.needsUpdate = true;
 
+        /*
         const plane = new THREE.Mesh(
             new THREE.PlaneGeometry(640, 480, 1, 1),
             new THREE.MeshBasicMaterial({
@@ -132,6 +134,7 @@ export class PointCloudScene {
         );
         this.scene.add(plane);
         plane.position.z = -500;
+        */
 
         const tick = (): void => {
             requestAnimationFrame(tick);

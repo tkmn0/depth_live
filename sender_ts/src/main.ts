@@ -8,8 +8,8 @@ import { StreamerDelegate } from "./streamer/streamer_delegate";
 import { StreamReader } from "./stream_reader/stream_reader";
 import { StreamMessage } from "./models/stream_message";
 import { WebRTCClientDelegate } from "./webrtc_client/webrtc_client_delegate";
-import { ipcRenderer } from "electron";
 import { PointCloudScene } from "./three/point_cloud_scene";
+import { ipcRenderer } from "electron";
 
 class Main implements StreamerDelegate, WebRTCClientDelegate {
 
@@ -91,7 +91,6 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
         }
 
         if (this.sender) {
-
             let testCanvas = document.createElement('canvas');
             testCanvas.id = 'depth_rgba';
             testCanvas.width = 512;
