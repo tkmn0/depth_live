@@ -9,7 +9,6 @@ import { StreamReader } from "./stream_reader/stream_reader";
 import { StreamMessage } from "./models/stream_message";
 import { WebRTCClientDelegate } from "./webrtc_client/webrtc_client_delegate";
 import { PointCloudScene } from "./three/point_cloud_scene";
-import { ipcRenderer } from "electron";
 import { PixelConverter } from "./pixel_converter/pixel_converter"
 import { RealsenseGateway } from "./depth_camera/realsense/real_sense_gateway";
 
@@ -32,7 +31,7 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
 
         // webrtc
         this.webRTCClient = new WebRTCClient({
-            video: false,
+            video: !this.sender,
             audio: false,
             data: true
         });
@@ -59,6 +58,7 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
         if (this.sender) {
             this.streamer = new Streamer();
             this.streamer.delegate = this;
+            const ipcRenderer = require("electron").ipcRenderer;
             // from main process
             ipcRenderer.on('depth', this.realsenseGateway.onDepthFrame);
             ipcRenderer.on('color', this.realsenseGateway.onColorFlame);
@@ -96,6 +96,16 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
     private setupEvents = () => {
         document.getElementById('webrtcConnectButton').onclick = this.connect;
         document.getElementById('webrtcDisconnectButton').onclick = this.disconnect;
+        document.getElementById('removeVideoButton').onclick = () => {
+            console.log("play video");
+            console.log(this.webRTCClient.hasLocalStream());
+            if (!this.webRTCClient.hasLocalStream()) {
+                this.webRTCClient.setupAsync();
+            } else {
+                (document.getElementById('remote_color') as HTMLVideoElement).play();
+            }
+
+        };
     };
 
     private connect = async () => {
@@ -128,6 +138,7 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
     onAddStream = (stream: MediaStream) => {
         if (stream.getTracks()[0].kind == "video") {
             let video = document.createElement("video");
+            video.autoplay = true;
             video.id = "remote_color";
             document.body.appendChild(video);
 
@@ -142,7 +153,7 @@ class Main implements StreamerDelegate, WebRTCClientDelegate {
 
     private playVideo(element, stream: MediaStream) {
         element.srcObject = stream;
-        element.play();
+        // element.play();
     }
 }
 

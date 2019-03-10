@@ -16,8 +16,23 @@ export class WebRTCClient {
         this.localVideoStream = stream;
     }
 
+    public hasLocalStream() {
+        return (this.localVideoStream != null);
+    }
+
     constructor(channels: Channels) {
         this.channels = channels;
+    }
+
+    setupAsync = async () => {
+        if (this.channels.video) {
+            try {
+                this.localVideoStream = await navigator.mediaDevices.getUserMedia({ video: this.channels.video });
+                console.log(this.localVideoStream);
+            } catch (e) {
+                console.log(e);
+            }
+        }
     }
 
     private setupDataChannel = (peer: RTCPeerConnection): RTCDataChannel => {
@@ -111,7 +126,7 @@ export class WebRTCClient {
         });
     };
 
-    public connect = () => {
+    public connect = async () => {
         if (!this.peerConnection) {
             this.peerConnection = this.prepareNewConnection();
         }
@@ -119,6 +134,7 @@ export class WebRTCClient {
             // set up data
             this.dataChannel = this.setupDataChannel(this.peerConnection);
         }
+
 
         return this.makeOfferAsync();
     }
